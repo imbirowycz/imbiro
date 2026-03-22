@@ -1,0 +1,21 @@
+{
+  "name": "imbiro",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "up": "docker compose up -d postgres && wait-on tcp:127.0.0.1:5432 -t 120000 && npm run dev",
+    "down": "kill-port 3000 5173 && docker compose down --remove-orphans",
+    "dev": "cross-env DATABASE_URL=postgres://user:password@localhost:5432/app concurrently -n backend,fe -c blue,green \"npm run dev --workspace=@myorg/backend\" \"npm run dev --workspace=@myorg/frontend-vue-pwa\"",
+    "build": "npm run build --workspace=@myorg/shared && npm run build --workspace=@myorg/backend && npm run build --workspace=@myorg/frontend-vue-pwa",
+    "docker:up": "docker compose up -d --build",
+    "docker:down": "docker compose down"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "cross-env": "^7.0.3",
+    "kill-port": "^2.0.1",
+    "wait-on": "^8.0.1"
+  }
+}
