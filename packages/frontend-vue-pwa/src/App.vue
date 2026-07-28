@@ -37,8 +37,9 @@ async function onSubmit() {
       const body = await res.json().catch(() => ({}))
       throw new Error((body as { error?: string }).error ?? res.statusText)
     }
+    const newUser = await res.json()
+    users.value.push(newUser)
     form.value = { email: '', password: '', name: '' }
-    await loadUsers()
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Failed to create user'
   } finally {
@@ -52,12 +53,11 @@ onMounted(loadUsers)
 <template>
   <main class="page">
     <header class="header">
-      <h1>My App</h1>
+      <h1>My App - imbiro</h1>
       <p class="lede">Vue 3 + PWA · API na Express + Postgres</p>
     </header>
 
     <section class="card">
-      skdjfksdjfksd 
       <h2>Nowy użytkownik</h2>
       <form class="form" @submit.prevent="onSubmit">
         <label>
