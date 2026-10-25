@@ -1,9 +1,10 @@
 import cors from 'cors'
 import express from 'express'
+import { config } from './config'
 import { runMigrations } from './migrate'
 
 const app = express()
-const port = Number(process.env.PORT) || 3000
+const port = config.port
 
 app.use(cors())
 app.use(express.json())

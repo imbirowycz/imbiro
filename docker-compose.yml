@@ -28,6 +28,21 @@ services:
       postgres:
         condition: service_healthy
 
+  worker:
+    build:
+      context: .
+      dockerfile: packages/backend/Dockerfile
+    command: ["node", "packages/backend/dist/worker.js"]
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://user:password@postgres:5432/app
+      WORKER_CONCURRENCY: "2"
+    # Dłużej niż WORKER_SHUTDOWN_TIMEOUT_SECONDS (domyślnie 30), żeby graceful stop zdążył.
+    stop_grace_period: 40s
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   frontend:
     build:
       context: .

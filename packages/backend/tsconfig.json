@@ -6,6 +6,7 @@
     "module": "CommonJS",
     "moduleResolution": "Node",
     "esModuleInterop": true,
+    "skipLibCheck": true,
     "paths": {
       "@myorg/shared": ["../shared/index.ts"],
       "@myorg/shared/*": ["../shared/*"]

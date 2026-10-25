@@ -1,9 +1,8 @@
 import pg from 'pg'
+import { config } from './config'
 
 const { Pool } = pg
 
-const connectionString = process.env.DATABASE_URL
-
 export const pool = new Pool({
-  connectionString,
+  connectionString: config.databaseUrl,
 })

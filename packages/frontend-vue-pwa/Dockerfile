@@ -1,4 +1,4 @@
-FROM node:20-alpine AS build
+FROM node:22-alpine AS build
 WORKDIR /app
 
 ARG VITE_API_BASE_URL=http://localhost:3000
@@ -17,7 +17,7 @@ COPY packages/frontend-vue-pwa packages/frontend-vue-pwa
 
 RUN npm run build --workspace=@myorg/frontend-vue-pwa
 
-FROM node:20-alpine
+FROM node:22-alpine
 WORKDIR /app
 RUN npm install -g serve@14
 COPY --from=build /app/packages/frontend-vue-pwa/dist ./dist
