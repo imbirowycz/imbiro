@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import type { PoolClient } from 'pg'
 import type { PgBoss } from 'pg-boss'
-import type { ScheduledTask, TaskExecution } from '@myorg/shared'
+import type { ApiErrorDetail, ScheduledTask, TaskExecution } from '@myorg/shared'
 import { bossDb } from '../../boss'
 import { withTransaction } from '../../db'
 import { ConflictError, NotFoundError, ValidationError } from '../../errors'
@@ -158,10 +158,35 @@ export class SchedulerService {
     return enqueued
   }
 
-  /** Walidacja definicji i konfiguracji akcji (z rejestru); zapisujemy znormalizowaną konfigurację. */
+  /**
+   * Walidacja definicji i konfiguracji akcji (z rejestru); zapisujemy znormalizowaną konfigurację.
+   * Obie części są sprawdzane zawsze, żeby klient dostał wszystkie błędy w jednej odpowiedzi.
+   */
   private parseDefinition(input: Record<string, unknown>): TaskDefinition {
-    const definition = parseTaskDefinition(input)
-    const actionConfig = this.actions.validateConfig(definition.actionType, definition.actionConfig)
+    const details: ApiErrorDetail[] = []
+    const collect = (fn: () => void) => {
+      try {
+        fn()
+      } catch (err) {
+        if (!(err instanceof ValidationError)) throw err
+        details.push(...(err.details ?? [{ path: '(root)', message: err.message }]))
+      }
+    }
+
+    let definition: TaskDefinition | undefined
+    let actionConfig: unknown
+    collect(() => {
+      definition = parseTaskDefinition(input)
+    })
+    collect(() => {
+      actionConfig = this.actions.validateConfig(String(input.actionType ?? ''), input.actionConfig ?? {})
+    })
+
+    if (details.length > 0 || !definition) {
+      // Zły actionType zgłaszają obie części — zostawiamy pierwszy komunikat dla danego pola.
+      const unique = details.filter((d, i) => details.findIndex((other) => other.path === d.path) === i)
+      throw new ValidationError('Invalid task definition', unique)
+    }
     return { ...definition, actionConfig: actionConfig as Record<string, unknown> }
   }
 
