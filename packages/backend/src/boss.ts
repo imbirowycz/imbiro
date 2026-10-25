@@ -1,9 +1,12 @@
-import { PgBoss, type Queue } from 'pg-boss'
+import type { PoolClient } from 'pg'
+import { PgBoss, type Db, type Queue } from 'pg-boss'
 import { config } from './config'
 
 export const QUEUES = {
   // Jeden job = jeden termin wykonania zadania schedulera.
   execute: 'scheduler.execute',
+  // Cykliczna (co minutę) ponowna synchronizacja terminów z kolejką — siatka bezpieczeństwa.
+  reconcile: 'scheduler.reconcile',
 } as const
 
 // API tylko wysyła joby; utrzymanie kolejki (supervise, cron) robi wyłącznie Worker.
@@ -36,6 +39,14 @@ const queueDefinitions: Queue[] = [
     retryBackoff: true,
     retryDelayMax: config.jobs.retryDelayMaxSeconds,
   },
+  {
+    name: QUEUES.reconcile,
+    // Nie kumuluj przebiegów, gdy poprzedni jeszcze trwa.
+    policy: 'exclusive',
+    expireInSeconds: 120,
+    retryLimit: 0,
+    deleteAfterSeconds: 3600,
+  },
 ]
 
 // createQueue nie nadpisuje istniejącej kolejki, więc zmiany z env aplikujemy przez updateQueue.
@@ -48,4 +59,9 @@ export async function ensureQueues(boss: PgBoss): Promise<void> {
       await boss.updateQueue(name, options)
     }
   }
+}
+
+/** Pozwala wykonać operację pg-boss w transakcji otwartej na kliencie `pg`. */
+export function bossDb(client: PoolClient): Db {
+  return { executeSql: (text, values) => client.query(text, values) }
 }
