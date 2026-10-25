@@ -4,14 +4,23 @@ import type { TaskRecord } from './scheduler.repository'
 
 // Integracja harmonogramu z pg-boss: jeden zaplanowany termin zadania = jeden job w kolejce.
 
-export interface ExecuteJobData {
+export interface ScheduledJobData {
+  trigger: 'schedule'
   taskId: string
   /** ISO termin, którego dotyczy job. */
   scheduledFor: string
   /** Wersja harmonogramu z chwili planowania; job ze starszą wersją jest pomijany. */
   scheduleVersion: number
-  trigger: 'schedule'
 }
+
+export interface ManualJobData {
+  trigger: 'manual'
+  taskId: string
+  /** Rekord task_executions utworzony razem z jobem. */
+  executionId: string
+}
+
+export type ExecuteJobData = ScheduledJobData | ManualJobData
 
 /**
  * Klucz terminu. Kolejka ma politykę `exclusive`, więc pg-boss nie przyjmie drugiego joba
@@ -28,13 +37,30 @@ export async function enqueueSlot(boss: PgBoss, task: TaskRecord, db?: Db): Prom
   const key = slotKey(task)
   if (!key || !task.nextRunAt) return null
 
-  const data: ExecuteJobData = {
+  const data: ScheduledJobData = {
+    trigger: 'schedule',
     taskId: task.id,
     scheduledFor: task.nextRunAt.toISOString(),
     scheduleVersion: task.scheduleVersion,
-    trigger: 'schedule',
   }
   return boss.send(QUEUES.execute, data, { singletonKey: key, startAfter: task.nextRunAt, db })
+}
+
+/**
+ * Job ręcznego uruchomienia — ta sama kolejka i ten sam executor co terminy z harmonogramu.
+ * Id joba nadajemy sami, żeby zapisać je w rekordzie wykonania w tej samej transakcji.
+ * Klucz jest wymagany: przy polityce `exclusive` joby bez klucza blokowałyby się nawzajem.
+ */
+export async function enqueueManualRun(
+  boss: PgBoss,
+  taskId: string,
+  executionId: string,
+  jobId: string,
+  db?: Db
+): Promise<void> {
+  const data: ManualJobData = { trigger: 'manual', taskId, executionId }
+  const id = await boss.send(QUEUES.execute, data, { id: jobId, singletonKey: `manual:${executionId}`, db })
+  if (!id) throw new Error(`Failed to enqueue manual run ${executionId}`)
 }
 
 /** Anuluje oczekujący job poprzedniego terminu. Brak joba nie jest błędem. */

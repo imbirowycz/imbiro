@@ -104,6 +104,17 @@ Bez backendu żądania do API zwrócą błędy; proxy `/api` działa, gdy backen
 
 Pliki SQL w `packages/backend/migrations/` (`NNN_nazwa.sql`) są wykonywane automatycznie przy starcie backendu, w kolejności nazw, każdy w osobnej transakcji. Wykonane migracje są zapisywane w tabeli `schema_migrations`; równoległe starty (backend + worker) chroni `pg_advisory_lock`. Nowa zmiana schematu = nowy plik z kolejnym numerem — nie edytuj już wykonanych.
 
+## Scheduler — wykonanie zadań
+
+Kod: `packages/backend/src/modules/scheduler/`. Planowanie i wykonanie idzie przez kolejkę pg-boss `scheduler.execute`, obsługiwaną przez osobny proces `worker` (`src/worker.ts`).
+
+- **Jeden termin = jedno wykonanie.** Rekord w `task_executions` ma unikalny `(task_id, scheduled_for)`; drugi job dla tego samego terminu jest pomijany.
+- **Statusy:** `pending` (czeka na start lub na ponowienie po błędzie) → `running` → `succeeded` / `failed`.
+- **Timeout i ponowienia:** `JOB_TIMEOUT_SECONDS` na próbę, do `JOB_RETRY_LIMIT` ponowień z wykładniczym backoff (`JOB_RETRY_DELAY_SECONDS` … `JOB_RETRY_DELAY_MAX_SECONDS`). Błędy trwałe (brak konfiguracji integracji, zła konfiguracja akcji, odrzucony adresat) kończą wykonanie od razu.
+- **Awaria workera:** job przerwanej próby wygasa (timeout + 60 s) i pg-boss ponawia go — kolejna próba przejmuje to samo wykonanie. Wykonanie, którego job zakończył się bez zapisu wyniku, reconcile (co minutę) oznacza jako `failed`.
+- **Pominięte terminy** (np. worker wyłączony) nie są nadrabiane: zaległy termin wykona się raz, następny liczony jest od teraz.
+- **Brak gwarancji exactly-once dla operacji zewnętrznych.** Gwarancja to „co najmniej raz”: jeśli worker padnie po wysłaniu emaila, a przed zapisem wyniku, ponowienie wyśle go jeszcze raz. Akcje dostają stały `executionId` jako klucz idempotencji (np. `email.send` używa go jako `Message-ID`).
+
 ## Build produkcyjny (artyfakty lokalne)
 
 ```bash

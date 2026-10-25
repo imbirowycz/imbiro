@@ -1,12 +1,14 @@
+import { randomUUID } from 'node:crypto'
 import type { PoolClient } from 'pg'
 import type { PgBoss } from 'pg-boss'
-import type { ScheduledTask } from '@myorg/shared'
+import type { ScheduledTask, TaskExecution } from '@myorg/shared'
 import { bossDb } from '../../boss'
 import { withTransaction } from '../../db'
 import { ConflictError, NotFoundError, ValidationError } from '../../errors'
 import { actionRegistry, type ActionRegistry } from './actions'
 import { initialRunAt } from './schedule'
-import { enqueueSlot, syncSlot } from './scheduler.planner'
+import { ExecutionRepository, toExecutionDto } from './execution.repository'
+import { enqueueManualRun, enqueueSlot, syncSlot } from './scheduler.planner'
 import { SchedulerRepository, toDto, type TaskRecord, type TaskWrite } from './scheduler.repository'
 import { assertPatchShape, parseTaskDefinition, type TaskDefinition } from './scheduler.validation'
 
@@ -22,6 +24,7 @@ export class SchedulerService {
     private readonly boss: PgBoss,
     private readonly actions: ActionRegistry = actionRegistry,
     private readonly repository = new SchedulerRepository(),
+    private readonly executions = new ExecutionRepository(),
     private readonly now: () => Date = () => new Date()
   ) {}
 
@@ -120,6 +123,26 @@ export class SchedulerService {
       await syncSlot(this.boss, previous, updated, bossDb(client))
       return toDto(updated)
     })
+  }
+
+  /**
+   * Ręczne uruchomienie: rekord wykonania i job powstają w jednej transakcji, a job trafia do tej
+   * samej kolejki i executora co terminy z harmonogramu. Działa także dla wyłączonego zadania
+   * i nie zmienia jego harmonogramu.
+   */
+  async runNow(id: string): Promise<TaskExecution> {
+    const task = await this.getRecord(id)
+    return withTransaction(async (client) => {
+      const jobId = randomUUID()
+      const execution = await this.executions.insertManual(task.id, this.now(), jobId, client)
+      await enqueueManualRun(this.boss, task.id, execution.id, jobId, bossDb(client))
+      return toExecutionDto(execution)
+    })
+  }
+
+  async listExecutions(id: string, limit = 50): Promise<TaskExecution[]> {
+    const task = await this.getRecord(id)
+    return (await this.executions.listByTask(task.id, limit)).map(toExecutionDto)
   }
 
   /**

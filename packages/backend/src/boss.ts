@@ -9,6 +9,8 @@ export const QUEUES = {
   reconcile: 'scheduler.reconcile',
 } as const
 
+export const JOB_EXPIRE_GRACE_SECONDS = 60
+
 // API tylko wysyła joby; utrzymanie kolejki (supervise, cron) robi wyłącznie Worker.
 export type BossRole = 'api' | 'worker'
 
@@ -33,7 +35,9 @@ const queueDefinitions: Queue[] = [
     name: QUEUES.execute,
     // Najwyżej jeden job w stanie created/retry/active na singletonKey (= jeden termin zadania).
     policy: 'exclusive',
-    expireInSeconds: config.jobs.timeoutSeconds,
+    // Twardy limit pg-boss jest dłuższy od timeoutu akcji, który egzekwuje executor — wynik
+    // zapisujemy sami, a wygaśnięcie joba zostaje na wypadek, gdy worker przestał działać.
+    expireInSeconds: config.jobs.timeoutSeconds + JOB_EXPIRE_GRACE_SECONDS,
     retryLimit: config.jobs.retryLimit,
     retryDelay: config.jobs.retryDelaySeconds,
     retryBackoff: true,
