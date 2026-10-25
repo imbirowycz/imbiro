@@ -19,4 +19,6 @@ rsync -az --delete \
   --exclude dist \
   ./ "$SERVER:$APP_DIR/"
 
-ssh "$SERVER" "cd $APP_DIR && docker compose -f docker-compose.prod.yml up -d --build --remove-orphans && docker image prune -f"
+# Restart Caddy: Caddyfile jest montowany jako pojedynczy plik, a rsync podmienia go na nowy
+# (nowy inode) — bez restartu kontener dalej widzi starą wersję.
+ssh "$SERVER" "cd $APP_DIR && docker compose -f docker-compose.prod.yml up -d --build --remove-orphans && docker compose -f docker-compose.prod.yml restart caddy && docker image prune -f"
