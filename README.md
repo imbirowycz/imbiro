@@ -100,6 +100,10 @@ npm run dev --workspace=@myorg/frontend-vue-pwa
 
 Bez backendu żądania do API zwrócą błędy; proxy `/api` działa, gdy backend nasłuchuje na porcie 3000.
 
+## Migracje bazy danych
+
+Pliki SQL w `packages/backend/migrations/` (`NNN_nazwa.sql`) są wykonywane automatycznie przy starcie backendu, w kolejności nazw, każdy w osobnej transakcji. Wykonane migracje są zapisywane w tabeli `schema_migrations`; równoległe starty (backend + worker) chroni `pg_advisory_lock`. Nowa zmiana schematu = nowy plik z kolejnym numerem — nie edytuj już wykonanych.
+
 ## Build produkcyjny (artyfakty lokalne)
 
 ```bash
