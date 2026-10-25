@@ -7,7 +7,7 @@ Monorepo: Vue 3 (Vite, PWA) + Express (TypeScript) + PostgreSQL + wspólny pakie
 | Usługa   | URL / host              | Uwagi                                      |
 |----------|-------------------------|--------------------------------------------|
 | Frontend | http://localhost:5173   | Vite w dev; w Dockerze statyczny `serve`   |
-| Backend  | http://localhost:3000   | API `/api/scheduler/*`, `/health`   |
+| Backend  | http://localhost:3000   | API `/api/auth/*`, `/api/scheduler/*` (po zalogowaniu), `/health` |
 | Postgres | `localhost:5432`        | Użytkownik: `user`, hasło: `password`, baza: `app` |
 
 ## Pierwsze uruchomienie (zależności)
@@ -122,10 +122,12 @@ REST API (`/api/scheduler`, błędy w formacie `{ error, details? }`):
 | `GET /tasks/:id/executions?limit=50` | historia wykonań (najnowsze pierwsze, `limit` 1–200) | 200, 400, 404 |
 | `GET /actions` | dostępne typy akcji | 200 |
 
-Przykład:
+Przykład (API wymaga sesji — najpierw logowanie, potem cookie i nagłówek `X-CSRF-Token`):
 
 ```bash
-curl -X POST localhost:3000/api/scheduler/tasks -H 'Content-Type: application/json' -d '{
+CSRF=$(curl -s -c /tmp/imbiro.cookies -X POST localhost:3000/api/auth/login -H 'Content-Type: application/json' \
+  -d '{"login":"admin","password":"…"}' | node -pe 'JSON.parse(require("fs").readFileSync(0)).csrfToken')
+curl -b /tmp/imbiro.cookies -H "X-CSRF-Token: $CSRF" -X POST localhost:3000/api/scheduler/tasks -H 'Content-Type: application/json' -d '{
   "title": "Raport dzienny", "actionType": "report.generate", "actionConfig": { "periodHours": 24 },
   "scheduleType": "cron", "scheduleConfig": { "expression": "0 8 * * *" }, "timezone": "Europe/Warsaw"
 }'
@@ -139,6 +141,47 @@ Typy harmonogramu: `once` (termin = `startAt`), `cron` (`{ "expression": "<5 pó
 - **Awaria workera:** job przerwanej próby wygasa (timeout + 60 s) i pg-boss ponawia go — kolejna próba przejmuje to samo wykonanie. Wykonanie, którego job zakończył się bez zapisu wyniku, reconcile (co minutę) oznacza jako `failed`.
 - **Pominięte terminy** (np. worker wyłączony) nie są nadrabiane: zaległy termin wykona się raz, następny liczony jest od teraz.
 - **Brak gwarancji exactly-once dla operacji zewnętrznych.** Gwarancja to „co najmniej raz”: jeśli worker padnie po wysłaniu emaila, a przed zapisem wyniku, ponowienie wyśle go jeszcze raz. Akcje dostają stały `executionId` jako klucz idempotencji (np. `email.send` używa go jako `Message-ID`).
+
+## Logowanie i bezpieczeństwo
+
+Aplikacja ma jedno konto administratora, bez rejestracji i odzyskiwania hasła. Wszystkie endpointy `/api/*` poza `/api/auth/*` wymagają zalogowania (inaczej `401`).
+
+| Endpoint | Opis |
+|---|---|
+| `POST /api/auth/login` | `{ "login": "<login lub e-mail>", "password": "…" }` → ustawia cookie sesji, zwraca `{ user, csrfToken, expiresAt }` |
+| `GET /api/auth/me` | bieżąca sesja (`200`) albo `401` |
+| `POST /api/auth/logout` | unieważnia sesję w bazie (`204`) |
+
+**Inicjalizacja administratora.** Dane są tylko w zmiennych środowiskowych, hasło wyłącznie jako hash Argon2id:
+
+```bash
+# lokalnie — wypisze linię ADMIN_PASSWORD_HASH='…' (hasło wpisujesz bez echa)
+npm run admin:hash --workspace=@myorg/backend
+```
+
+Lokalnie wpisz `ADMIN_USERNAME` i tę linię do `packages/backend/.env` (plik w `.gitignore`; czytają go `npm run dev` i lokalny `docker compose`). Na serwerze — do `/opt/imbiro/.env` (instrukcja w `.env.example`). Zmiana hasła = nowy hash w `.env` + restart backendu; istniejące sesje pozostają ważne do wygaśnięcia (żeby wylogować wszystkich od razu: `DELETE FROM admin_sessions`).
+
+**Zmienne środowiskowe backendu (auth):**
+
+| Zmienna | Wymagana | Domyślnie | Opis |
+|---|---|---|---|
+| `ADMIN_USERNAME` | tak | — | login administratora |
+| `ADMIN_EMAIL` | nie | — | alternatywny login |
+| `ADMIN_PASSWORD_HASH` | tak | — | hash Argon2id (`npm run admin:hash`) |
+| `SESSION_TTL_HOURS` | nie | `12` | bezwzględny czas życia sesji |
+| `SESSION_IDLE_MINUTES` | nie | `120` | wygaśnięcie po bezczynności |
+| `SESSION_COOKIE_SECURE` | nie | `true` w produkcji | cookie tylko przez HTTPS (`__Host-imbiro_session`) |
+| `TRUST_PROXY` | nie | `0` | liczba reverse proxy przed API (za Caddy: `1`) — źródło IP do limitów logowania |
+| `CORS_ORIGINS` | nie | dev: `http://localhost:5173`, prod: brak | originy frontendu spoza adresu API (lista po przecinku) |
+| `LOGIN_WINDOW_MINUTES` | nie | `15` | okno limitów logowania |
+| `LOGIN_MAX_FAILURES_PER_IP_LOGIN` / `_PER_IP` / `_PER_LOGIN` | nie | `5` / `20` / `50` | nieudane próby w oknie, po których jest `429` |
+
+**Jak chronione są dane:**
+- sesja w PostgreSQL (`admin_sessions`), w cookie losowy token (`HttpOnly`, `SameSite=Lax`, `Secure` w produkcji), w bazie tylko jego SHA-256; sprawdzana przy każdym żądaniu, usuwana przy wylogowaniu;
+- CSRF: operacje zmieniające stan wymagają nagłówka `X-CSRF-Token` z tokenem sesji, a żądania z obcym `Origin` są odrzucane (`403`); logowanie przyjmuje tylko JSON;
+- brute-force: limity nieudanych prób w PostgreSQL (`login_attempts`), po przekroczeniu `429` z `Retry-After`; komunikaty błędów są ogólne, czas odpowiedzi nie zdradza, czy login istnieje;
+- logi nie zawierają haseł, tokenów ani loginów z nieudanych prób;
+- w produkcji Caddy zapewnia HTTPS i nagłówki bezpieczeństwa (HSTS, CSP, `X-Frame-Options`, `nosniff`).
 
 ## Build produkcyjny (artyfakty lokalne)
 

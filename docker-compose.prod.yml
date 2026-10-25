@@ -22,6 +22,16 @@ services:
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       PORT: "3000"
+      # Administrator — wartości tylko w /opt/imbiro/.env; bez nich deploy się zatrzyma.
+      ADMIN_USERNAME: ${ADMIN_USERNAME:?ADMIN_USERNAME is required in .env}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ADMIN_PASSWORD_HASH: ${ADMIN_PASSWORD_HASH:?ADMIN_PASSWORD_HASH is required in .env}
+      SESSION_TTL_HOURS: ${SESSION_TTL_HOURS:-12}
+      SESSION_IDLE_MINUTES: ${SESSION_IDLE_MINUTES:-120}
+      # API stoi za Caddy (1 proxy): prawdziwe IP klienta i protokół z X-Forwarded-*.
+      TRUST_PROXY: "1"
+      # Frontend i API pod tym samym adresem — CORS niepotrzebny.
+      CORS_ORIGINS: ""
     depends_on:
       postgres:
         condition: service_healthy

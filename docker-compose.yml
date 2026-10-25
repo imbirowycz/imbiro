@@ -21,9 +21,16 @@ services:
       dockerfile: packages/backend/Dockerfile
     ports:
       - "3000:3000"
+    # Dane administratora z lokalnego packages/backend/.env (npm run admin:hash).
+    env_file:
+      - path: packages/backend/.env
+        required: false
     environment:
       DATABASE_URL: postgres://user:password@postgres:5432/app
       PORT: "3000"
+      # Lokalnie bez HTTPS; frontend z kontenera woła API pod innym portem.
+      SESSION_COOKIE_SECURE: "false"
+      CORS_ORIGINS: http://localhost:5173
     depends_on:
       postgres:
         condition: service_healthy

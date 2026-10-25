@@ -27,6 +27,15 @@ function bool(name: string, defaultValue: boolean): boolean {
   return raw === 'true'
 }
 
+function list(name: string, defaultValue: string[]): string[] {
+  const raw = process.env[name]
+  if (raw === undefined) return defaultValue
+  return raw
+    .split(',')
+    .map((item) => item.trim().replace(/\/$/, ''))
+    .filter(Boolean)
+}
+
 function int(name: string, defaultValue: number, min = 0): number {
   const raw = process.env[name]
   if (raw === undefined || raw === '') return defaultValue
@@ -41,6 +50,15 @@ export const config = {
   isProduction,
   databaseUrl: required('DATABASE_URL'),
   port: int('PORT', 3000, 1),
+
+  http: {
+    // Liczba zaufanych reverse proxy przed API (Caddy = 1). Od tego zależy req.ip (limity logowania)
+    // i req.protocol. 0 = połączenie bezpośrednie; nagłówki X-Forwarded-* są wtedy ignorowane.
+    trustProxy: int('TRUST_PROXY', 0, 0),
+    // Originy frontendu inne niż adres samego API, którym wolno wołać API z przeglądarki (CORS)
+    // i wysyłać operacje zmieniające stan. Na produkcji frontend i API są pod jednym adresem — pusto.
+    allowedOrigins: list('CORS_ORIGINS', isProduction ? [] : ['http://localhost:5173']),
+  },
 
   boss: {
     schema: process.env.PGBOSS_SCHEMA || 'pgboss',

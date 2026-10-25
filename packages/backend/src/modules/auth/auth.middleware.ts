@@ -99,3 +99,18 @@ export function noStore(_req: Request, res: Response, next: NextFunction): void 
   res.setHeader('Cache-Control', 'no-store')
   next()
 }
+
+/**
+ * Druga warstwa ochrony CSRF: operacja zmieniająca stan z nagłówkiem Origin musi pochodzić
+ * z adresu samej aplikacji albo z dozwolonego frontendu. Żądania bez Origin (np. curl)
+ * przechodzą dalej — chroni je token CSRF.
+ */
+export function originCheck(req: Request, _res: Response, next: NextFunction): void {
+  if (SAFE_METHODS.has(req.method)) return next()
+  const origin = req.get('origin')
+  if (!origin) return next()
+
+  const ownOrigin = `${req.protocol}://${req.get('host')}`
+  if (origin === ownOrigin || config.http.allowedOrigins.includes(origin)) return next()
+  next(new ForbiddenError('Origin not allowed'))
+}
