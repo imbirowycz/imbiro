@@ -4,6 +4,7 @@ import type { ScheduledTask } from '@myorg/shared'
 import { bossDb } from '../../boss'
 import { withTransaction } from '../../db'
 import { ConflictError, NotFoundError, ValidationError } from '../../errors'
+import { actionRegistry, type ActionRegistry } from './actions'
 import { initialRunAt } from './schedule'
 import { enqueueSlot, syncSlot } from './scheduler.planner'
 import { SchedulerRepository, toDto, type TaskRecord, type TaskWrite } from './scheduler.repository'
@@ -19,6 +20,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 export class SchedulerService {
   constructor(
     private readonly boss: PgBoss,
+    private readonly actions: ActionRegistry = actionRegistry,
     private readonly repository = new SchedulerRepository(),
     private readonly now: () => Date = () => new Date()
   ) {}
@@ -45,7 +47,7 @@ export class SchedulerService {
     if (body.startAt === undefined && body.scheduleType !== 'once') {
       body.startAt = now.toISOString()
     }
-    const definition = parseTaskDefinition(body)
+    const definition = this.parseDefinition(body)
     const nextRunAt = this.planOrReject(definition, now)
 
     return withTransaction(async (client) => {
@@ -71,7 +73,12 @@ export class SchedulerService {
           { path: 'scheduleConfig', message: 'Required when scheduleType changes' },
         ])
       }
-      const definition = parseTaskDefinition({ ...toInput(previous), ...patch })
+      // Zmiana typu akcji bez nowej konfiguracji też nie dziedziczy starej.
+      const merged = { ...toInput(previous), ...patch }
+      if (patch.actionType !== undefined && patch.actionType !== previous.actionType && patch.actionConfig === undefined) {
+        merged.actionConfig = {}
+      }
+      const definition = this.parseDefinition(merged)
       const next = this.applyDefinition(previous, definition)
       const updated = await this.repository.update(id, next, client)
       await syncSlot(this.boss, previous, updated, bossDb(client))
@@ -126,6 +133,13 @@ export class SchedulerService {
       if (await enqueueSlot(this.boss, task)) enqueued++
     }
     return enqueued
+  }
+
+  /** Walidacja definicji i konfiguracji akcji (z rejestru); zapisujemy znormalizowaną konfigurację. */
+  private parseDefinition(input: Record<string, unknown>): TaskDefinition {
+    const definition = parseTaskDefinition(input)
+    const actionConfig = this.actions.validateConfig(definition.actionType, definition.actionConfig)
+    return { ...definition, actionConfig: actionConfig as Record<string, unknown> }
   }
 
   private async lockTask(id: string, client: PoolClient): Promise<TaskRecord> {

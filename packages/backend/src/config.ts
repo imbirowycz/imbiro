@@ -37,4 +37,22 @@ export const config = {
     retryDelaySeconds: int('JOB_RETRY_DELAY_SECONDS', 30, 1),
     retryDelayMaxSeconds: int('JOB_RETRY_DELAY_MAX_SECONDS', 600, 1),
   },
+
+  // Integracje akcji są opcjonalne: brak konfiguracji = czytelny błąd przy wykonaniu akcji.
+  integrations: {
+    smtp: process.env.SMTP_HOST
+      ? {
+          host: process.env.SMTP_HOST,
+          port: int('SMTP_PORT', 587, 1),
+          // true = TLS od początku połączenia (zwykle port 465); false = STARTTLS.
+          secure: process.env.SMTP_SECURE === 'true',
+          user: process.env.SMTP_USER || undefined,
+          password: process.env.SMTP_PASSWORD || undefined,
+          from: process.env.SMTP_FROM || undefined,
+        }
+      : null,
+    telegram: {
+      botToken: process.env.TELEGRAM_BOT_TOKEN || undefined,
+    },
+  },
 }

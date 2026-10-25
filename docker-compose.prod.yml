@@ -38,6 +38,13 @@ services:
       JOB_TIMEOUT_SECONDS: ${JOB_TIMEOUT_SECONDS:-300}
       JOB_RETRY_LIMIT: ${JOB_RETRY_LIMIT:-3}
       JOB_RETRY_DELAY_SECONDS: ${JOB_RETRY_DELAY_SECONDS:-30}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
     # Dłużej niż WORKER_SHUTDOWN_TIMEOUT_SECONDS (domyślnie 30), żeby graceful stop zdążył.
     stop_grace_period: 40s
     depends_on:
