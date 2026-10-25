@@ -15,3 +15,4 @@ export type {
   CreateScheduledTaskDTO,
   UpdateScheduledTaskDTO,
 } from './dtos/scheduler.dto'
+export type { AdminUser, AuthSessionInfo, LoginDTO } from './models/auth.model'

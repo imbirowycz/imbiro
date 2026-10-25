@@ -1,6 +1,6 @@
 import type { ErrorRequestHandler, NextFunction, Request, RequestHandler, Response } from 'express'
 import type { ApiError } from '@myorg/shared'
-import { AppError } from './errors'
+import { AppError, TooManyRequestsError } from './errors'
 
 /** Przekazuje błędy z async handlerów do middleware błędów. */
 export function asyncHandler<P extends Record<string, string> = Record<string, string>>(
@@ -19,6 +19,7 @@ export const notFoundHandler: RequestHandler = (req, res) => {
 /** Jeden format błędów API: { error, details? }. */
 export const errorHandler: ErrorRequestHandler = (err, _req, res, _next: NextFunction) => {
   if (err instanceof AppError) {
+    if (err instanceof TooManyRequestsError) res.setHeader('Retry-After', String(err.retryAfterSeconds))
     const body: ApiError = { error: err.message, ...(err.details ? { details: err.details } : {}) }
     res.status(err.status).json(body)
     return

@@ -1,6 +1,8 @@
 import cors from 'cors'
 import express from 'express'
 import { errorHandler, notFoundHandler } from './http'
+import { createAuthRouter } from './modules/auth/auth.controller'
+import { loadSession } from './modules/auth/auth.middleware'
 import { createSchedulerRouter } from './modules/scheduler/scheduler.controller'
 import type { SchedulerService } from './modules/scheduler/scheduler.service'
 
@@ -14,6 +16,8 @@ export function createApp(scheduler: SchedulerService): express.Express {
     res.json({ ok: true })
   })
 
+  app.use(loadSession())
+  app.use('/api/auth', createAuthRouter())
   app.use('/api/scheduler', createSchedulerRouter(scheduler))
 
   app.use(notFoundHandler)

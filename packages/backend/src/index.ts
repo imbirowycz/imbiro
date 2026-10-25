@@ -4,6 +4,7 @@ import { createBoss, ensureQueues } from './boss'
 import { config } from './config'
 import { pool } from './db'
 import { runMigrations } from './migrate'
+import { prepareAuth } from './modules/auth/password'
 import { SchedulerService } from './modules/scheduler/scheduler.service'
 
 // API tylko zapisuje zadania i wysyła joby do pg-boss; wykonuje je osobny proces Workera.
@@ -12,6 +13,8 @@ let server: Server | undefined
 let shuttingDown = false
 
 async function main(): Promise<void> {
+  // Brak/zła konfiguracja administratora zatrzymuje start, zamiast ujawnić się przy pierwszym logowaniu.
+  await prepareAuth()
   await runMigrations()
   await boss.start({ attempts: 5 })
   // Idempotentne; API może wystartować przed Workerem i od razu przyjmować zadania.
