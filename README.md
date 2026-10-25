@@ -7,7 +7,7 @@ Monorepo: Vue 3 (Vite, PWA) + Express (TypeScript) + PostgreSQL + wspólny pakie
 | Usługa   | URL / host              | Uwagi                                      |
 |----------|-------------------------|--------------------------------------------|
 | Frontend | http://localhost:5173   | Vite w dev; w Dockerze statyczny `serve`   |
-| Backend  | http://localhost:3000   | API pod `/api/*`, `/health`         |
+| Backend  | http://localhost:3000   | API `/api/scheduler/*`, `/health`   |
 | Postgres | `localhost:5432`        | Użytkownik: `user`, hasło: `password`, baza: `app` |
 
 ## Pierwsze uruchomienie (zależności)
@@ -107,6 +107,31 @@ Pliki SQL w `packages/backend/migrations/` (`NNN_nazwa.sql`) są wykonywane auto
 ## Scheduler — wykonanie zadań
 
 Kod: `packages/backend/src/modules/scheduler/`. Planowanie i wykonanie idzie przez kolejkę pg-boss `scheduler.execute`, obsługiwaną przez osobny proces `worker` (`src/worker.ts`).
+
+REST API (`/api/scheduler`, błędy w formacie `{ error, details? }`):
+
+| Metoda i ścieżka | Opis | Kody |
+|---|---|---|
+| `GET /tasks` | lista zadań | 200 |
+| `POST /tasks` | utworzenie zadania | 201 (+ `Location`), 400 |
+| `GET /tasks/:id` | szczegóły | 200, 404 |
+| `PATCH /tasks/:id` | edycja (dowolny podzbiór pól) | 200, 400, 404 |
+| `POST /tasks/:id/enable` | aktywacja | 200, 404, 409 (brak przyszłego terminu) |
+| `POST /tasks/:id/disable` | dezaktywacja | 200, 404 |
+| `POST /tasks/:id/run` | ręczne uruchomienie (ta sama kolejka i executor) | 202, 404 |
+| `GET /tasks/:id/executions?limit=50` | historia wykonań (najnowsze pierwsze, `limit` 1–200) | 200, 400, 404 |
+| `GET /actions` | dostępne typy akcji | 200 |
+
+Przykład:
+
+```bash
+curl -X POST localhost:3000/api/scheduler/tasks -H 'Content-Type: application/json' -d '{
+  "title": "Raport dzienny", "actionType": "report.generate", "actionConfig": { "periodHours": 24 },
+  "scheduleType": "cron", "scheduleConfig": { "expression": "0 8 * * *" }, "timezone": "Europe/Warsaw"
+}'
+```
+
+Typy harmonogramu: `once` (termin = `startAt`), `cron` (`{ "expression": "<5 pól>" }`, liczony w `timezone`), `interval` (`{ "everySeconds": 1800 }`, min. 60). Opcjonalnie `startAt` / `endAt` (ISO 8601 z offsetem) i `enabled`.
 
 - **Jeden termin = jedno wykonanie.** Rekord w `task_executions` ma unikalny `(task_id, scheduled_for)`; drugi job dla tego samego terminu jest pomijany.
 - **Statusy:** `pending` (czeka na start lub na ponowienie po błędzie) → `running` → `succeeded` / `failed`.
