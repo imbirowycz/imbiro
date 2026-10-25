@@ -2,9 +2,9 @@ import { Router, type Request } from 'express'
 import { z } from 'zod'
 import type { AuthSessionInfo } from '@myorg/shared'
 import { config } from '../../config'
-import { TooManyRequestsError, UnauthorizedError, ValidationError } from '../../errors'
+import { TooManyRequestsError, UnauthorizedError, UnsupportedMediaTypeError, ValidationError } from '../../errors'
 import { asyncHandler } from '../../http'
-import { SESSION_COOKIE, sessionCookieOptions } from './auth.middleware'
+import { csrfProtection, SESSION_COOKIE, sessionCookieOptions } from './auth.middleware'
 import { LoginLimiter } from './login-limiter'
 import { normalizeLogin, verifyAdminCredentials } from './password'
 import { SessionRepository, type AuthSession } from './session.repository'
@@ -37,6 +37,8 @@ export function createAuthRouter(sessions = new SessionRepository(), limiter = n
   router.post(
     '/login',
     asyncHandler(async (req, res) => {
+      // Tylko JSON: zwykły formularz HTML z obcej strony nie może wysłać tego typu treści.
+      if (!req.is('application/json')) throw new UnsupportedMediaTypeError('Content-Type must be application/json')
       const parsed = loginSchema.safeParse(req.body)
       if (!parsed.success) throw new ValidationError('Login and password are required')
 
@@ -71,6 +73,7 @@ export function createAuthRouter(sessions = new SessionRepository(), limiter = n
 
   router.post(
     '/logout',
+    csrfProtection,
     asyncHandler(async (req, res) => {
       if (req.sessionToken) await sessions.deleteByToken(req.sessionToken)
       res.clearCookie(SESSION_COOKIE, sessionCookieOptions())

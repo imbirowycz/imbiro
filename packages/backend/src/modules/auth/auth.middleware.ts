@@ -1,5 +1,7 @@
+import { timingSafeEqual } from 'node:crypto'
 import type { CookieOptions, NextFunction, Request, Response } from 'express'
 import { config } from '../../config'
+import { ForbiddenError, UnauthorizedError } from '../../errors'
 import { SessionRepository, type AuthSession } from './session.repository'
 
 declare global {
@@ -64,4 +66,36 @@ export function loadSession(sessions = new SessionRepository()) {
       next(err)
     }
   }
+}
+
+/** Wymaga aktywnej sesji administratora (sprawdzonej w bazie przez loadSession). */
+export function requireAuth(req: Request, _res: Response, next: NextFunction): void {
+  if (!req.auth) return next(new UnauthorizedError())
+  next()
+}
+
+const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS'])
+export const CSRF_HEADER = 'x-csrf-token'
+
+/**
+ * Ochrona CSRF (synchronizer token): operacje zmieniające stan muszą przesłać w nagłówku
+ * token powiązany z sesją. Obca strona nie zna tokenu, a niestandardowego nagłówka nie
+ * wyśle cross-origin bez zgody CORS. SameSite=Lax jest dodatkową, nie jedyną warstwą.
+ */
+export function csrfProtection(req: Request, _res: Response, next: NextFunction): void {
+  if (SAFE_METHODS.has(req.method)) return next()
+  // Bez sesji nie ma czego chronić — requireAuth (albo handler) zwróci 401.
+  if (!req.auth) return next()
+
+  const provided = Buffer.from(req.get(CSRF_HEADER) ?? '')
+  const expected = Buffer.from(req.auth.csrfToken)
+  const valid = provided.length === expected.length && timingSafeEqual(provided, expected)
+  if (!valid) return next(new ForbiddenError('Invalid or missing CSRF token'))
+  next()
+}
+
+/** Odpowiedzi API z danymi nie mogą trafiać do cache przeglądarki ani pośredników. */
+export function noStore(_req: Request, res: Response, next: NextFunction): void {
+  res.setHeader('Cache-Control', 'no-store')
+  next()
 }

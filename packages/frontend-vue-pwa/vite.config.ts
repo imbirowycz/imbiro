@@ -11,6 +11,10 @@ export default defineConfig({
         enabled: false,
       },
       registerType: "autoUpdate",
+      workbox: {
+        // API nigdy nie jest obsługiwane z cache service workera.
+        navigateFallbackDenylist: [/^\/api\//],
+      },
       includeAssets: ["icon.svg", "apple-touch-icon.png"],
       manifest: {
         name: "imbiro",
