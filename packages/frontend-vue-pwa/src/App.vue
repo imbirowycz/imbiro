@@ -84,7 +84,7 @@ onMounted(loadUsers)
     </section>
 
     <section class="card">
-      <h2>Użytkownicy</h2>
+      <h2>Super użytkownicy</h2>
       <p v-if="loading" class="muted">Ładowanie…</p>
       <p v-else-if="error" class="error">{{ error }}</p>
       <ul v-else-if="users.length" class="list">
