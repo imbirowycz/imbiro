@@ -7,7 +7,7 @@ Monorepo: Vue 3 (Vite, PWA) + Express (TypeScript) + PostgreSQL + wspólny pakie
 | Usługa   | URL / host              | Uwagi                                      |
 |----------|-------------------------|--------------------------------------------|
 | Frontend | http://localhost:5173   | Vite w dev; w Dockerze statyczny `serve`   |
-| Backend  | http://localhost:3000   | API m.in. `GET/POST /api/users`, `/health` |
+| Backend  | http://localhost:3000   | API pod `/api/*`, `/health`         |
 | Postgres | `localhost:5432`        | Użytkownik: `user`, hasło: `password`, baza: `app` |
 
 ## Pierwsze uruchomienie (zależności)
