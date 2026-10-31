@@ -11,7 +11,6 @@
     "isolatedModules": true,
     "resolveJsonModule": true,
     "useDefineForClassFields": true,
-    "baseUrl": ".",
     "paths": {
       "@myorg/shared": ["../shared/index.ts"],
       "@myorg/shared/*": ["../shared/*"]
