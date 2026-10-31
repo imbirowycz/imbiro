@@ -168,8 +168,8 @@ Lokalnie wpisz `ADMIN_USERNAME` i tę linię do `packages/backend/.env` (plik w 
 | `ADMIN_USERNAME` | tak | — | login administratora |
 | `ADMIN_EMAIL` | nie | — | alternatywny login |
 | `ADMIN_PASSWORD_HASH` | tak | — | hash Argon2id (`npm run admin:hash`) |
-| `SESSION_TTL_HOURS` | nie | `12` | bezwzględny czas życia sesji |
-| `SESSION_IDLE_MINUTES` | nie | `120` | wygaśnięcie po bezczynności |
+| `SESSION_TTL_HOURS` | nie | `720` | bezwzględny czas życia sesji (30 dni) |
+| `SESSION_IDLE_MINUTES` | nie | `10080` | wygaśnięcie po bezczynności (7 dni, przesuwane przy każdym użyciu) |
 | `SESSION_COOKIE_SECURE` | nie | `true` w produkcji | cookie tylko przez HTTPS (`__Host-imbiro_session`) |
 | `TRUST_PROXY` | nie | `0` | liczba reverse proxy przed API (za Caddy: `1`) — źródło IP do limitów logowania |
 | `CORS_ORIGINS` | nie | dev: `http://localhost:5173`, prod: brak | originy frontendu spoza adresu API (lista po przecinku) |

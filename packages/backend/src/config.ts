@@ -93,10 +93,10 @@ export const config = {
   },
 
   session: {
-    // Bezwzględny czas życia sesji od zalogowania.
-    ttlHours: int('SESSION_TTL_HOURS', 12, 1),
-    // Wygaśnięcie po braku aktywności.
-    idleMinutes: int('SESSION_IDLE_MINUTES', 120, 1),
+    // Bezwzględny czas życia sesji od zalogowania (domyślnie 30 dni).
+    ttlHours: int('SESSION_TTL_HOURS', 720, 1),
+    // Wygaśnięcie po braku aktywności (domyślnie 7 dni); każde żądanie do API przesuwa ten termin.
+    idleMinutes: int('SESSION_IDLE_MINUTES', 10080, 1),
     // Secure wymaga HTTPS; domyślnie włączone w produkcji.
     cookieSecure: bool('SESSION_COOKIE_SECURE', isProduction),
   },
