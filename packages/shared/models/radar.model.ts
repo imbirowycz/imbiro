@@ -52,6 +52,11 @@ export interface ModuleResult<T = unknown> {
   durationMs: number
   /** True when served from the in-memory cache. */
   cached: boolean
+  /**
+   * True when the source failed just now and these are the last good data (stale-if-error).
+   * `fetchedAt` then tells how old they are; `warnings` explains why.
+   */
+  stale: boolean
   /** Real date of the data according to the source (e.g. NBP quotation date), if it differs from fetchedAt. */
   dataAsOf: string | null
   data: T[]

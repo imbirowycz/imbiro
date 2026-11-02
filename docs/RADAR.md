@@ -31,7 +31,7 @@ API i Worker to **osobne procesy** — każdy ma własny rejestr, runner i cache
 | `safe-fetch` | `http/safe-fetch.ts` | https, allowlista hostów (też po przekierowaniach), limit rozmiaru, retry z backoffem, dekodowanie znaków | |
 | `ModuleRegistry` | `core/module.registry.ts` | katalog modułów i grup, walidacja przy starcie | |
 | `ModuleRunner` | `core/module.runner.ts` | uruchamia moduły (limit równoległości, timeout, anulowanie), waliduje elementy, zamienia błędy na `ModuleResult` ze statusem `error`, cache | nigdy nie rzuca z powodu modułu |
-| `ResultCache` | `core/result.cache.ts` | TTL, single-flight, minimalny odstęp wymuszonego odświeżenia | nie trwa po restarcie |
+| `ResultCache` | `core/result.cache.ts` | TTL, single-flight, minimalny odstęp wymuszonego odświeżenia, stale-if-error (ostatnie dobre dane do 6 h) | nie trwa po restarcie |
 | `radar.deliver` | `scheduler/actions/radar-deliver.action.ts` | adapter do schedulera: runner → digest → Telegram/e-mail | do `task_executions.result` trafia tylko podsumowanie |
 
 ## Kontrakt wyniku
@@ -41,6 +41,11 @@ Każde uruchomienie modułu daje `ModuleResult` (`status: success | partial | er
 modułu osobno i statusem zbiorczym. Błąd modułu to **dane** (HTTP 200), nie błąd API.
 
 `dataAsOf` = prawdziwa data danych według źródła (np. data tabeli NBP). Nie udajemy, że dane są „z dziś”.
+
+**Stale-if-error:** gdy źródło zawiedzie, a cache ma jego ostatni udany wynik nie starszy niż 6 h, zwracany jest ten
+wynik ze `status: 'partial'`, `stale: true`, prawdziwym (starym) `fetchedAt` i ostrzeżeniem w `warnings[0]`,
+np. „Open-Meteo nie odpowiada (Źródło zwróciło błąd 503). Pokazuję dane z 12:00.”. Dashboard i raport pokazują
+to ostrzeżenie. Źródło jest odpytywane ponownie po 30 s; gdy wróci, dane są znowu świeże. Starsze niż 6 h → zwykły błąd.
 
 ## Jak dodać nowy moduł
 
@@ -143,7 +148,8 @@ Uwaga: zadanie z id modułu, którego już nie ma w katalogu (np. usunięte TVN2
 
 - Brak testów automatycznych modułów Radaru (świadoma decyzja na tym etapie) — weryfikacja: `npx tsc`, build i ręczne
   wywołania API. Kontrakty są jednak walidowane w runtime (zod) na wejściu z każdego źródła.
-- Cache w pamięci jest osobny dla API i Workera i znika po restarcie/deployu — pierwsze odświeżenie po wdrożeniu trwa dłużej.
+- Cache w pamięci jest osobny dla API i Workera i znika po restarcie/deployu — pierwsze odświeżenie po wdrożeniu trwa dłużej,
+  a awaria źródła tuż po restarcie daje błąd (nie ma jeszcze „ostatnich dobrych danych”).
 - `alerts.warsaw` to filtr słów kluczowych na RSS ZTM/WTP (bez daty końca komunikatu) — może pokazywać komunikaty już nieaktualne.
 - IMGW hydro filtrowane po województwie i nazwie rzeki (brak TERYT) — obejmuje też odcinki Wisły daleko od Warszawy.
 - Źródła mogą blokować IP serwerów (tak było z TVN24 i stronami artykułów thehackernews.com) — nowe źródło sprawdzaj z serwera.

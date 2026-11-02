@@ -177,6 +177,7 @@ export class ModuleRunner {
       fetchedAt: fetchedAt.toISOString(),
       durationMs,
       cached: false,
+      stale: false,
     }
   }
 

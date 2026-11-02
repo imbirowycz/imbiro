@@ -30,6 +30,8 @@ export interface DigestSection {
   dataAsOf: string | null
   /** Set when the module failed — the section then says so instead of silently disappearing. */
   unavailable: string | null
+  /** Shown above the lines, e.g. "source down, showing data from 12:00" (stale-if-error). */
+  note: string | null
   lines: DigestLine[]
   /** Items left out because of maxItemsPerModule. */
   omitted: number
@@ -154,6 +156,7 @@ function toSection(result: ModuleResult, registry: ModuleRegistry, maxItems: num
     attribution: result.source.attribution ?? null,
     dataAsOf: result.dataAsOf,
     unavailable: result.status === 'error' ? (result.error?.message ?? 'Źródło niedostępne') : null,
+    note: result.stale ? (result.warnings[0] ?? null) : null,
     ...renderLines(result.itemKind, result.data, maxItems, seen),
   }
 }
@@ -166,6 +169,7 @@ function blockSection(block: OverviewBlock, maxItems: number, seen: Set<string>)
     attribution: block.attributions.length ? block.attributions.join('; ') : null,
     dataAsOf: block.dataAsOf,
     unavailable: block.error,
+    note: null,
     ...renderLines(block.itemKind, block.items, maxItems, seen),
   }
 }
@@ -202,6 +206,7 @@ export function renderTelegram(digest: Digest, maxLength: number): string {
   const blocks: string[][] = [[`<b>${escapeHtml(digest.title)}</b>`]]
   for (const section of digest.sections) {
     const block = [`\n<b>${escapeHtml(section.title)}</b> <i>(${escapeHtml(sectionMeta(section))})</i>`]
+    if (section.note) block.push(`<i>⚠️ ${escapeHtml(section.note)}</i>`)
     if (section.unavailable) block.push(`⚠️ ${escapeHtml(section.unavailable)}`)
     else if (section.lines.length === 0) block.push('brak danych')
     for (const line of section.lines) {
@@ -231,6 +236,10 @@ export function renderEmail(digest: Digest): { text: string; html: string } {
   for (const section of digest.sections) {
     text.push(`${section.title} (${sectionMeta(section)})`)
     html.push(`<h3>${escapeHtml(section.title)} <small>(${escapeHtml(sectionMeta(section))})</small></h3>`)
+    if (section.note) {
+      text.push(`  ! ${section.note}`)
+      html.push(`<p><em>⚠️ ${escapeHtml(section.note)}</em></p>`)
+    }
     if (section.unavailable) {
       text.push(`  ! ${section.unavailable}`)
       html.push(`<p>⚠️ ${escapeHtml(section.unavailable)}</p>`)

@@ -13,6 +13,8 @@ const emit = defineEmits<{ refresh: [] }>()
 const loaded = computed(() => props.section.results.filter((r): r is ModuleResult => r !== null))
 const ok = computed(() => loaded.value.filter((r) => r.status !== 'error'))
 const failed = computed(() => loaded.value.filter((r) => r.status === 'error'))
+/** Source down, last good data shown instead (stale-if-error) — say so, with the time of the data. */
+const staleNotes = computed(() => ok.value.filter((r) => r.stale).map((r) => r.warnings[0]).filter(Boolean))
 const hasData = computed(() => ok.value.some((r) => r.data.length > 0))
 /** Source names; many sources → just the count. */
 const sources = computed(() => {
@@ -65,6 +67,7 @@ const moduleName = (id: string) => props.modules.get(id)?.name ?? id
     </div>
 
     <template v-else-if="ok.length">
+      <p v-for="note in staleNotes" :key="note" class="state partial">{{ note }}</p>
       <p v-if="failed.length" class="state partial">
         Niedostępne: {{ failed.map((r) => `${moduleName(r.moduleId)} (${r.error?.message})`).join('; ') }}.
         Pozostałe źródła działają.
