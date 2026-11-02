@@ -37,18 +37,8 @@ export const radarConfig = {
   },
 
   reader: {
-    /**
-     * Article Reader works only for these domains (and their subdomains): the sites our news
-     * feeds link to. Hacker News links go anywhere, so they open on the original site.
-     */
-    allowedDomains: [
-      'rmf24.pl', 'bbc.co.uk', 'bbc.com', 'theguardian.com', 'bankier.pl',
-      'nodejs.org', 'blog.vuejs.org', 'devblogs.microsoft.com', 'javascriptweekly.com', 'postgresql.org',
-      'docker.com', 'simonwillison.net', 'github.com',
-      // thehackernews.com is not here: its article pages answer 403 to non-browser clients.
-      'cert.pl', 'sekurak.pl', 'niebezpiecznik.pl',
-      'ztm.waw.pl', 'wtp.waw.pl',
-    ],
+    /** Article Reader works only for these domains (and their subdomains): the sites our news feeds link to. */
+    allowedDomains: ['rmf24.pl', 'bankier.pl', 'cert.pl', 'sekurak.pl', 'niebezpiecznik.pl', 'ztm.waw.pl', 'wtp.waw.pl'],
   },
 
   finance: {

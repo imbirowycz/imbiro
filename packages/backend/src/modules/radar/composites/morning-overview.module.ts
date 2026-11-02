@@ -130,7 +130,7 @@ export function createMorningOverviewModule(sources: MorningOverviewSources, top
         block('alerts', 'Alerty', 'alert', [...imgw, ...air, ...transport], alerts),
         block('poland', 'Polska – najważniejsze', 'news', pick(sources.news.poland), topOf(sources.news.poland)),
         block('world', 'Świat – najważniejsze', 'news', pick(sources.news.world), topOf(sources.news.world)),
-        block('it', 'IT – najważniejsze', 'news', pick(sources.news.it), topOf(sources.news.it)),
+        block('it', 'Bezpieczeństwo IT – najważniejsze', 'news', pick(sources.news.it), topOf(sources.news.it)),
         block('currencies', 'Kursy walut', 'currency-rate', currencies, currencies.flatMap((r) => r.data)),
         block('gold', 'Złoto', 'gold-price', gold, gold.flatMap((r) => r.data)),
       ]

@@ -10,7 +10,6 @@ import { createImgwModule } from './sources/alerts/imgw.module'
 import { createWarsawTransportModule } from './sources/alerts/warsaw-transport.module'
 import { createNbpCurrenciesModule, createNbpGoldModule } from './sources/finance/nbp.modules'
 import { createFeedModule } from './sources/news/feed-module.factory'
-import { createHackerNewsModule } from './sources/news/hackernews.module'
 import { NEWS_FEEDS } from './sources/news/news.feeds'
 import { createWeatherForecastModule, createWeatherNowModule } from './sources/weather/open-meteo.modules'
 
@@ -24,17 +23,13 @@ const NEWS_GROUPS: { id: string; name: string; description: string; categories: 
   { id: 'news.world', name: 'Świat', description: 'Wiadomości ze świata', categories: ['world'] },
   { id: 'news.warsaw', name: 'Warszawa', description: 'Wiadomości z Warszawy', categories: ['warsaw'] },
   { id: 'news.economy', name: 'Gospodarka', description: 'Wiadomości gospodarcze', categories: ['economy'] },
-  { id: 'news.it', name: 'IT i technologia', description: 'Hacker News, blogi technologii, wydania, AI', categories: ['it', 'ai'] },
   { id: 'news.security', name: 'Bezpieczeństwo IT', description: 'CERT Polska i serwisy o bezpieczeństwie', categories: ['security'] },
 ]
 
 export function createRadarRegistry(): ModuleRegistry {
   const news = radarConfig.news
   const scorer = createScorer(news.relevance)
-  const newsModules: RadarModule<unknown>[] = [
-    createHackerNewsModule(scorer, news.maxItemsPerFeed),
-    ...NEWS_FEEDS.map((feed) => createFeedModule(feed, scorer, news.maxItemsPerFeed)),
-  ]
+  const newsModules: RadarModule<unknown>[] = NEWS_FEEDS.map((feed) => createFeedModule(feed, scorer, news.maxItemsPerFeed))
 
   const registry = new ModuleRegistry()
     .register(createNbpCurrenciesModule(radarConfig.finance.currencies))
@@ -95,7 +90,8 @@ export function createRadarRegistry(): ModuleRegistry {
     createMorningOverviewModule({
       weather: ['weather.current'],
       alerts: { imgw: 'alerts.imgw', air: 'alerts.gios', transport: 'alerts.warsaw' },
-      news: { poland: newsIn('news.poland'), world: newsIn('news.world'), it: newsIn('news.it') },
+      // "IT" = Polish IT-security sources (the English IT feeds were removed).
+      news: { poland: newsIn('news.poland'), world: newsIn('news.world'), it: newsIn('news.security') },
       finance: { currencies: 'finance.nbp.currencies', gold: 'finance.nbp.gold' },
     })
   )

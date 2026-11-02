@@ -218,7 +218,7 @@ GET /api/radar/articles/read?url=…  →  ArticleView { status: success | unava
 - Frontend: `/read?url=…` (`src/radar/ReaderPage.vue`), przycisk „Czytaj” tylko przy linkach z dozwolonych domen
   (lista z `GET /api/radar/dashboard` → `readerDomains`). Link do oryginału renderowany tylko dla http(s).
 - Dodanie domeny: wpis w `reader.allowedDomains`; najpierw sprawdź, że strona artykułu odpowiada 200 dla zwykłego
-  klienta HTTP (np. thehackernews.com zwraca 403 — dlatego go nie ma).
+  klienta HTTP (np. thehackernews.com zwracał 403).
 
 ## Jak dodać nowe źródło RSS/Atom
 
@@ -236,7 +236,8 @@ Moduł trafia automatycznie do grupy swojej kategorii i do `news`. Przed dodanie
 3. Regulamin źródła i czy serwis nie blokuje botów (np. PAP — Incapsula; nie obchodzimy tego).
 4. Rozmiar (domyślny limit 2 MB; `maxBytes`).
 
-Źródło z własnym API (jak Hacker News) = osobny plik z `defineModule`, wynik w modelu `NewsItem`.
+Źródło z własnym API (nie RSS) = osobny plik z `defineModule`, wynik w modelu `NewsItem`
+(wzorzec: `sources/finance/nbp.modules.ts` — JSON API z walidacją zod).
 
 ## Przetwarzanie wiadomości
 
@@ -273,16 +274,11 @@ robi konsument (dashboard, przegląd poranny) — `byRelevance` w `parsing/relev
 |---|---|---|---|
 | `finance.nbp.currencies` | api.nbp.pl, tabela A (2 ostatnie) | 30 min | EUR, USD (`radar.config.ts`), zmiana vs poprzednia tabela |
 | `finance.nbp.gold` | api.nbp.pl, ceny złota (2 ostatnie) | 30 min | PLN za 1 g |
-| `news.hackernews` | HN Firebase API | 15 min | top 30, max 5 zapytań naraz, timeout 25 s |
 | `news.rmf.poland` | RSS | 15 min | Polska |
-| `news.rmf.world`, `news.bbc.world`, `news.guardian.world` | RSS | 15 min | Świat |
+| `news.rmf.world` | RSS | 15 min | Świat |
 | `news.rmf.warsaw` | RSS | 15 min | Warszawa |
-| `news.rmf.economy`, `news.bankier`, `news.bbc.business` | RSS | 15 min | Gospodarka |
-| `news.bbc.technology`, `news.nodejs`, `news.vue.blog`, `news.typescript.blog`, `news.javascriptweekly`, `news.postgresql`, `news.docker.blog` | RSS | 15 min – 3 h | IT; feed Node.js ma całą historię (~1000 wpisów) — bierzemy 30 najnowszych |
-| `news.github.releases.{vue,pinia,vite,express}` | Atom | 60 min | tytuł z prefiksem nazwy projektu |
-| `news.simonwillison` | Atom | 60 min | AI |
-| `news.cert.pl`, `news.sekurak`, `news.niebezpiecznik`, `news.thehackernews` | RSS/Atom | 60 min | Bezpieczeństwo |
-
+| `news.rmf.economy`, `news.bankier` | RSS | 15 min | Gospodarka (nie ma sekcji na dashboardzie; dostępne w schedulerze) |
+| `news.cert.pl`, `news.sekurak`, `news.niebezpiecznik` | RSS/Atom | 60 min | Bezpieczeństwo IT (sekcja „IT” na dashboardzie) |
 | `weather.current` | Open-Meteo | 15 min | warunki teraz + prognoza godzinowa (12 h) |
 | `weather.forecast` | Open-Meteo | 60 min | prognoza dzienna (7 dni) |
 | `alerts.imgw` | danepubliczne.imgw.pl (meteo + hydro) | 10 min | meteo: filtr TERYT powiatu (1465); hydro: województwo + zlewnia (`wisł*`); susza (stopień -1) = `info`. Wymagana atrybucja IMGW-PIB |
@@ -290,8 +286,11 @@ robi konsument (dashboard, przegląd poranny) — `byRelevance` w `parsing/relev
 | `alerts.warsaw` | RSS ZTM + WTP | 30 min | filtr słów (`transportKeywords`), ostatnie 14 dni |
 | `morning.overview` | moduł zbiorczy | 5 min | pogoda, alerty (IMGW od żółtego, powietrze, 3 komunikaty), top 3 Polska/Świat/IT po istotności, kursy, złoto |
 
-Grupy: `finance`, `weather`, `alerts`, `news.poland`, `news.world`, `news.warsaw`, `news.economy`, `news.it` (IT + AI),
+Grupy: `finance`, `weather`, `alerts`, `news.poland`, `news.world`, `news.warsaw`, `news.economy`,
 `news.security`, `news` (wszystkie wiadomości).
+
+**Tylko źródła polskojęzyczne** (decyzja z 2026-11-02): usunięto BBC, The Guardian, Hacker News, The Hacker News,
+blogi Node.js/Vue/TypeScript/Docker/PostgreSQL, wydania z GitHuba, JavaScript Weekly i Simon Willison.
 
 Daty bez strefy z IMGW i GIOŚ („2026-11-02 21:00:00”) są przeliczane z `Europe/Warsaw` (`core/time.ts`, z obsługą zmiany czasu).
 
