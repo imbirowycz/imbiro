@@ -38,17 +38,21 @@ const moduleName = (id: string) => props.modules.get(id)?.name ?? id
           <span v-else-if="fetchedAt" class="status">pobrano {{ timeAgo(fetchedAt, now) }}</span>
         </p>
       </div>
-      <button
-        type="button"
-        class="icon-button refresh"
-        :class="{ spinning: section.loading }"
-        :disabled="section.loading"
-        :aria-label="`Odśwież sekcję ${section.title}`"
-        title="Odśwież"
-        @click="emit('refresh')"
-      >
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12a7 7 0 1 1-2.05-4.95M19 5v4h-4" /></svg>
-      </button>
+      <div class="head-actions">
+        <!-- Section-specific controls (e.g. news order), provided by the page. -->
+        <slot name="actions" :results="ok" />
+        <button
+          type="button"
+          class="icon-button refresh"
+          :class="{ spinning: section.loading }"
+          :disabled="section.loading"
+          :aria-label="`Odśwież sekcję ${section.title}`"
+          title="Odśwież"
+          @click="emit('refresh')"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12a7 7 0 1 1-2.05-4.95M19 5v4h-4" /></svg>
+        </button>
+      </div>
     </header>
 
     <p v-if="section.error" class="state error" role="alert">
@@ -98,6 +102,12 @@ const moduleName = (id: string) => props.modules.get(id)?.name ?? id
 .titles {
   min-width: 0;
 }
+.head-actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 0.5rem;
+}
 h2 {
   margin: 0;
   font-family: var(--font-display);
@@ -120,18 +130,38 @@ h2 {
   display: inline-grid;
   flex: none;
   place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  background: #2f7bf5;
+  color: #fff;
+  box-shadow: 0 2px 8px rgb(47 123 245 / 0.35);
+  transition: background-color 0.15s, transform 0.15s, box-shadow 0.15s;
+}
+.refresh:hover {
+  background: #4a8ef7;
+  color: #fff;
+  box-shadow: 0 3px 12px rgb(47 123 245 / 0.5);
+}
+.refresh:active {
+  transform: scale(0.94);
+}
+.refresh:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
 }
 .refresh svg {
   width: 1.15rem;
   height: 1.15rem;
   fill: none;
   stroke: currentColor;
-  stroke-width: 1.8;
+  stroke-width: 2.2;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 .refresh:disabled {
   cursor: progress;
+  opacity: 0.8;
 }
 .spinning svg {
   animation: spin 0.9s linear infinite;

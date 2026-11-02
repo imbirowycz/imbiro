@@ -2,6 +2,8 @@
 import { computed, nextTick, onActivated, onBeforeUnmount, onDeactivated, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { longToday } from './format'
+import NewsOrderToggle from './NewsOrderToggle.vue'
+import type { NewsOrder } from './news-order'
 import RadarSection from './RadarSection.vue'
 import SectionBody from './SectionBody.vue'
 import SectionTabs from './SectionTabs.vue'
@@ -13,6 +15,8 @@ const { sections, modules, layoutLoading, layoutError, loadingAny, load, loadLay
   useDashboard()
 
 const now = ref(Date.now())
+/** News order chosen per section (default: newest first). */
+const newsOrder = ref<Record<string, NewsOrder>>({})
 const activeId = ref<string | null>(null)
 
 const tabs = computed(() =>
@@ -126,8 +130,15 @@ async function retryLayout() {
         :now="now"
         @refresh="refresh(section.id, true)"
       >
+        <template #actions="{ results }">
+          <NewsOrderToggle
+            v-if="results.some((r) => r.itemKind === 'news' && r.data.length)"
+            :model-value="newsOrder[section.id] ?? 'latest'"
+            @update:model-value="newsOrder[section.id] = $event"
+          />
+        </template>
         <template #default="{ results }">
-          <SectionBody :results="results" />
+          <SectionBody :results="results" :order="newsOrder[section.id] ?? 'latest'" />
         </template>
       </RadarSection>
     </template>

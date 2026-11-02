@@ -2,15 +2,15 @@
 import { computed, ref } from 'vue'
 import type { NewsItem } from '@myorg/shared'
 import { shortWhen } from '../format'
+import type { NewsOrder } from '../news-order'
 import { canRead } from '../reader'
 
+// The order is chosen in the section header (NewsOrderToggle) and passed in.
 const props = withDefaults(
-  defineProps<{ items: NewsItem[]; limit?: number; heading?: string; sortable?: boolean; showSummary?: boolean }>(),
-  { limit: 8, heading: undefined, sortable: true, showSummary: true }
+  defineProps<{ items: NewsItem[]; limit?: number; heading?: string; order?: NewsOrder; showSummary?: boolean }>(),
+  { limit: 8, heading: undefined, order: 'latest', showSummary: true }
 )
 
-type Order = 'latest' | 'relevant'
-const order = ref<Order>('latest')
 const expanded = ref(false)
 
 /** Same story from two feeds (e.g. RMF Polska and RMF Warszawa) is shown once. */
@@ -21,7 +21,7 @@ const unique = computed(() => {
 
 const sorted = computed(() =>
   [...unique.value].sort((a, b) =>
-    order.value === 'relevant' && b.relevance.score !== a.relevance.score
+    props.order === 'relevant' && b.relevance.score !== a.relevance.score
       ? b.relevance.score - a.relevance.score
       : (b.publishedAt ?? '').localeCompare(a.publishedAt ?? '')
   )
@@ -32,18 +32,12 @@ const now = new Date()
 
 <template>
   <div class="news">
-    <div v-if="heading || sortable" class="bar">
-      <h3 v-if="heading">{{ heading }}</h3>
-      <div v-if="sortable" class="order" role="group" aria-label="Kolejność wiadomości">
-        <button type="button" :aria-pressed="order === 'latest'" @click="order = 'latest'">Najnowsze</button>
-        <button type="button" :aria-pressed="order === 'relevant'" @click="order = 'relevant'">Najważniejsze</button>
-      </div>
-    </div>
+    <h3 v-if="heading">{{ heading }}</h3>
 
     <ol class="rows">
       <li v-for="item in visible" :key="item.url" class="row">
-        <span class="when">{{ item.publishedAt ? shortWhen(item.publishedAt, now) : '' }}</span>
         <div class="body">
+          <time v-if="item.publishedAt" class="when" :datetime="item.publishedAt">{{ shortWhen(item.publishedAt, now) }}</time>
           <a class="title" :href="item.url" target="_blank" rel="noopener noreferrer">{{ item.title }}</a>
           <p v-if="showSummary && item.summary" class="summary">{{ item.summary }}</p>
           <p class="meta">
@@ -69,40 +63,11 @@ const now = new Date()
 </template>
 
 <style scoped>
-.bar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem 1rem;
-  margin: 1rem 0 0.25rem;
-}
 h3 {
-  margin: 0;
+  margin: 1rem 0 0.25rem;
   font-family: var(--font-display);
   font-size: 1.15rem;
   font-weight: 600;
-}
-.order {
-  display: inline-flex;
-  margin-left: auto;
-  padding: 2px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-}
-.order button {
-  padding: 0.25rem 0.65rem;
-  border: 0;
-  border-radius: 6px;
-  background: none;
-  color: var(--muted);
-  font: inherit;
-  font-size: 0.82rem;
-  cursor: pointer;
-}
-.order button[aria-pressed='true'] {
-  background: var(--panel);
-  color: var(--ink);
 }
 .rows {
   margin: 0;
@@ -110,17 +75,16 @@ h3 {
   list-style: none;
 }
 .row {
-  display: grid;
-  grid-template-columns: 4.75rem minmax(0, 1fr);
-  gap: 1rem;
   padding: 0.75rem 0;
   border-bottom: 1px solid var(--line);
 }
+/* Time sits on its own line above the title. */
 .when {
-  padding-top: 0.1rem;
+  display: block;
+  margin-bottom: 0.15rem;
   color: var(--muted);
   font-family: var(--font-display);
-  font-size: 1rem;
+  font-size: 0.9rem;
   font-weight: 500;
   font-variant-numeric: tabular-nums;
 }
@@ -186,13 +150,5 @@ h3 {
 .more:hover {
   text-decoration: underline;
 }
-@media (max-width: 30rem) {
-  .row {
-    grid-template-columns: 3.6rem minmax(0, 1fr);
-    gap: 0.6rem;
-  }
-  .when {
-    font-size: 0.85rem;
-  }
-}
+
 </style>

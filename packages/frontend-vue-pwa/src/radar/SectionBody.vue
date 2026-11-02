@@ -12,13 +12,14 @@ import type {
   WeatherNow,
 } from '@myorg/shared'
 import AlertList from './items/AlertList.vue'
+import type { NewsOrder } from './news-order'
 import NewsList from './items/NewsList.vue'
 import RatesBoard from './items/RatesBoard.vue'
 import WeatherPanel from './items/WeatherPanel.vue'
 
 // Renders whatever the section's modules returned, by item kind — sections need no custom code.
 
-const props = defineProps<{ results: ModuleResult[] }>()
+const props = withDefaults(defineProps<{ results: ModuleResult[]; order?: NewsOrder }>(), { order: 'latest' })
 
 function itemsOf<T>(kind: RadarItemKind): T[] {
   return props.results.filter((r) => r.itemKind === kind).flatMap((r) => r.data as T[])
@@ -59,6 +60,7 @@ const showNewsHeadings = computed(() => newsGroups.value.length > 1 || rates.val
       :items="items"
       :heading="showNewsHeadings ? label : undefined"
       :limit="newsGroups.length > 1 ? 6 : 10"
+      :order="order"
     />
   </div>
 </template>
