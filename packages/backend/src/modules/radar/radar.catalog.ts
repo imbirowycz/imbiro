@@ -11,6 +11,7 @@ import { createWarsawTransportModule } from './sources/alerts/warsaw-transport.m
 import { createNbpCurrenciesModule, createNbpGoldModule } from './sources/finance/nbp.modules'
 import { createFeedModule } from './sources/news/feed-module.factory'
 import { NEWS_FEEDS } from './sources/news/news.feeds'
+import { createPolscyProgramisciModule } from './sources/news/polscy-programisci.module'
 import { createMetNorwayClient } from './sources/weather/met-norway'
 import { createWeatherForecastModule, createWeatherNowModule } from './sources/weather/weather.modules'
 
@@ -24,13 +25,26 @@ const NEWS_GROUPS: { id: string; name: string; description: string; categories: 
   { id: 'news.world', name: 'Świat', description: 'Wiadomości ze świata', categories: ['world'] },
   { id: 'news.warsaw', name: 'Warszawa', description: 'Wiadomości z Warszawy', categories: ['warsaw'] },
   { id: 'news.economy', name: 'Gospodarka', description: 'Wiadomości gospodarcze', categories: ['economy'] },
+  { id: 'news.it', name: 'IT', description: 'DOU, dev.ua i Polscy Programiści', categories: ['it'] },
   { id: 'news.security', name: 'Bezpieczeństwo IT', description: 'CERT Polska i serwisy o bezpieczeństwie', categories: ['security'] },
 ]
 
 export function createRadarRegistry(): ModuleRegistry {
   const news = radarConfig.news
   const scorer = createScorer(news.relevance)
-  const newsModules: RadarModule<unknown>[] = NEWS_FEEDS.map((feed) => createFeedModule(feed, scorer, news.maxItemsPerFeed))
+  const newsModules: RadarModule<unknown>[] = [
+    ...NEWS_FEEDS.map((feed) => createFeedModule(feed, scorer, { maxItems: news.maxItemsPerFeed, maxAgeDays: news.maxAgeDays })),
+    createPolscyProgramisciModule(
+      {
+        // The aggregator also republishes sites we read directly (Sekurak, Niebezpiecznik…) — skip those.
+        excludedHosts: NEWS_FEEDS.flatMap((feed) => [new URL(feed.url).hostname, new URL(feed.source.homepage).hostname]),
+        timeZone: radarConfig.location.timeZone,
+        maxItems: news.maxItemsPerFeed,
+        maxAgeDays: news.maxAgeDays,
+      },
+      scorer
+    ),
+  ]
 
   const registry = new ModuleRegistry()
     .register(createNbpCurrenciesModule(radarConfig.finance.currencies))

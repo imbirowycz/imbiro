@@ -38,7 +38,15 @@ export const radarConfig = {
 
   reader: {
     /** Article Reader works only for these domains (and their subdomains): the sites our news feeds link to. */
-    allowedDomains: ['rmf24.pl', 'bankier.pl', 'cert.pl', 'sekurak.pl', 'niebezpiecznik.pl', 'ztm.waw.pl', 'wtp.waw.pl'],
+    allowedDomains: [
+      'rmf24.pl', 'bankier.pl', 'cert.pl', 'sekurak.pl', 'niebezpiecznik.pl', 'zaufanatrzeciastrona.pl', 'ztm.waw.pl', 'wtp.waw.pl',
+      'dou.ua', 'dev.ua',
+      // Sites aggregated by polscyprogramisci.pl (its /zrodla page and home page, 2026-11-02).
+      // A site missing here just opens as the original; YouTube is left out on purpose (no article text).
+      'bialko.eu', 'brandsit.pl', 'bulldogjob.pl', 'furas.pl', 'fsgeek.pl', 'itwiz.pl', 'justjoin.it',
+      'kapitanhack.pl', 'mamstartup.pl', 'nowoczesny-frontend.pl', 'porozmawiajmyoit.pl', 'programistamag.pl',
+      'programistanaswoim.pl', 'stormit.pl', 'zacznijprogramowac.net',
+    ],
   },
 
   finance: {
@@ -49,6 +57,8 @@ export const radarConfig = {
   news: {
     /** Max items a single news module returns (newest first). */
     maxItemsPerFeed: 30,
+    /** News older than this are dropped (feeds like CERT keep month-old posts). Undated items are kept. */
+    maxAgeDays: 3,
     relevance: {
       // "word" = whole word, "prefix*" = any word starting with prefix (Polish inflection).
       interests: [

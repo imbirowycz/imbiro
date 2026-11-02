@@ -227,8 +227,13 @@ GET /api/radar/articles/read?url=…  →  ArticleView { status: success | unava
 
 - Limit: 2 ekstrakcje naraz, kolejka 8, potem HTTP 429 (jsdom jest ciężki dla 2 vCPU).
 - Paywalle i logowania **nie są omijane** — czytnik dostaje to, co strona pokazuje publicznie.
-- Frontend: `/read?url=…` (`src/radar/ReaderPage.vue`), przycisk „Czytaj” tylko przy linkach z dozwolonych domen
-  (lista z `GET /api/radar/dashboard` → `readerDomains`). Link do oryginału renderowany tylko dla http(s).
+- Frontend: `/read?url=…` (`src/radar/ReaderPage.vue`). Kliknięcie tytułu newsa z dozwolonej domeny
+  (lista z `GET /api/radar/dashboard` → `readerDomains`) otwiera czytnik; obok jest mały link „Oryginał”.
+  Gdy czytnik nie przygotuje tekstu (`unsupported`/`unavailable` albo błąd API), strona sama przechodzi
+  do oryginału (`location.replace` — „Wstecz” wraca na dashboard). Tytuły z innych domen otwierają oryginał
+  w nowej karcie. Link do oryginału renderowany tylko dla http(s).
+- Domeny (2026-11-02): źródła RSS (w tym `zaufanatrzeciastrona.pl`) + `dou.ua`, `dev.ua` + serwisy agregowane przez Polskich Programistów
+  (lista w `radar.config.ts`; YouTube celowo pominięty).
 - Dodanie domeny: wpis w `reader.allowedDomains`; najpierw sprawdź, że strona artykułu odpowiada 200 dla zwykłego
   klienta HTTP (np. thehackernews.com zwracał 403).
 
@@ -290,7 +295,9 @@ robi konsument (dashboard, przegląd poranny) — `byRelevance` w `parsing/relev
 | `news.rmf.world` | RSS | 15 min | Świat |
 | `news.rmf.warsaw` | RSS | 15 min | Warszawa |
 | `news.rmf.economy`, `news.bankier` | RSS | 15 min | Gospodarka (nie ma sekcji na dashboardzie; dostępne w schedulerze) |
-| `news.cert.pl`, `news.sekurak`, `news.niebezpiecznik` | RSS/Atom | 60 min | Bezpieczeństwo IT (sekcja „IT” na dashboardzie) |
+| `news.dou`, `news.devua` | RSS (`dou.ua/feed/`, `dev.ua/rss`) | 30 min | IT (sekcja „IT”), po ukraińsku. DOU: tylko `/feed/` (~5 wpisów) — kanały kategorii DOU (`/lenta/news/feed/`, `/lenta/articles/feed/`, `/forums/feed/`) dostają z IP serwera 403 od Cloudflare |
+| `news.polscyprogramisci` | strona główna polscyprogramisci.pl (parsowanie HTML, brak RSS/API) | 30 min | IT (sekcja „IT”). Karty `article.article-card`: tytuł, link do oryginału, zajawka, serwis, data (sam dzień → północ czasu lokalnego). Pomija wpisy z hostów, które czytamy bezpośrednio (Sekurak, Niebezpiecznik…). Brak kart = błąd `PARSE_ERROR` (zmiana układu strony) |
+| `news.cert.pl`, `news.sekurak`, `news.niebezpiecznik`, `news.zaufana` | RSS/Atom (Zaufana: `/feed.xml` — `/feed/` przekierowuje 301) | 60 min | Bezpieczeństwo IT (sekcja „IT” na dashboardzie) |
 | `weather.current` | Open-Meteo, zapasowo MET Norway | 15 min | warunki teraz + prognoza godzinowa (12 h) |
 | `weather.forecast` | Open-Meteo, zapasowo MET Norway | 60 min | prognoza dzienna (7 dni) |
 | `alerts.imgw` | danepubliczne.imgw.pl (meteo + hydro) | 10 min | meteo: filtr TERYT powiatu (1465); hydro: województwo + zlewnia (`wisł*`); susza (stopień -1) = `info`. Wymagana atrybucja IMGW-PIB |
@@ -298,10 +305,13 @@ robi konsument (dashboard, przegląd poranny) — `byRelevance` w `parsing/relev
 | `alerts.warsaw` | RSS ZTM + WTP | 30 min | filtr słów (`transportKeywords`), ostatnie 14 dni |
 | `morning.overview` | moduł zbiorczy | 5 min | pogoda, alerty (IMGW od żółtego, powietrze, 3 komunikaty), top 3 Polska/Świat/IT po istotności, kursy, złoto |
 
-Grupy: `finance`, `weather` (pogoda + jakość powietrza), `alerts` (IMGW + komunikacja), `news.poland`, `news.world`, `news.warsaw`, `news.economy`,
-`news.security`, `news` (wszystkie wiadomości).
+**Wiek newsów:** wszystkie moduły wiadomości (RSS i Polscy Programiści) odrzucają wpisy starsze niż `news.maxAgeDays`
+(3 dni, `radar.config.ts`); wpisy bez daty zostają. Źródła publikujące rzadko (CERT, Niebezpiecznik) bywają przez to puste.
 
-**Tylko źródła polskojęzyczne** (decyzja z 2026-11-02): usunięto BBC, The Guardian, Hacker News, The Hacker News,
+Grupy: `finance`, `weather` (pogoda + jakość powietrza), `alerts` (IMGW + komunikacja), `news.poland`, `news.world`, `news.warsaw`, `news.economy`,
+`news.it` (DOU, dev.ua, Polscy Programiści), `news.security`, `news` (wszystkie wiadomości). Sekcja „IT” = `news.it` + `news.security`.
+
+**Tylko źródła polskojęzyczne** (decyzja z 2026-11-02; wyjątek z tego samego dnia: ukraińskie DOU i dev.ua w sekcji IT): usunięto BBC, The Guardian, Hacker News, The Hacker News,
 blogi Node.js/Vue/TypeScript/Docker/PostgreSQL, wydania z GitHuba, JavaScript Weekly i Simon Willison.
 
 Daty bez strefy z IMGW i GIOŚ („2026-11-02 21:00:00”) są przeliczane z `Europe/Warsaw` (`core/time.ts`, z obsługą zmiany czasu).

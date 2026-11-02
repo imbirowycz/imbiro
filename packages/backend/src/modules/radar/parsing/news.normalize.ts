@@ -72,6 +72,12 @@ export function normalizeFeedEntry(entry: FeedEntry, options: NormalizeOptions):
   }
 }
 
+/** False for items published more than `maxAgeDays` before `now`; undated items count as recent. */
+export function isRecent(item: { publishedAt: string | null }, now: Date, maxAgeDays: number): boolean {
+  if (!item.publishedAt) return true
+  return now.getTime() - Date.parse(item.publishedAt) <= maxAgeDays * 86_400_000
+}
+
 /** Newest first; entries without a date go last (stable order otherwise). */
 export function byDateDesc(a: { publishedAt: string | null }, b: { publishedAt: string | null }): number {
   if (a.publishedAt === b.publishedAt) return 0

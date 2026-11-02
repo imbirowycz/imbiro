@@ -38,20 +38,26 @@ const now = new Date()
       <li v-for="item in visible" :key="item.url" class="row">
         <div class="body">
           <time v-if="item.publishedAt" class="when" :datetime="item.publishedAt">{{ shortWhen(item.publishedAt, now) }}</time>
-          <a class="title" :href="item.url" target="_blank" rel="noopener noreferrer">{{ item.title }}</a>
+          <!-- Reader mode first (it falls back to the original by itself); unsupported sites open directly. -->
+          <RouterLink v-if="canRead(item.url)" class="title" :to="{ name: 'read', query: { url: item.url } }">
+            {{ item.title }}
+          </RouterLink>
+          <a v-else class="title" :href="item.url" target="_blank" rel="noopener noreferrer">{{ item.title }}</a>
           <p v-if="showSummary && item.summary" class="summary">{{ item.summary }}</p>
           <p class="meta">
             <span>{{ item.source }}</span>
             <span v-if="item.relevance.matches.length" class="matches">{{ item.relevance.matches.join(', ') }}</span>
-            <RouterLink
-              v-if="canRead(item.url)"
-              class="read"
-              :to="{ name: 'read', query: { url: item.url } }"
-              :aria-label="`Czytaj w trybie czytania: ${item.title}`"
-            >
-              Czytaj
-            </RouterLink>
           </p>
+          <a
+            v-if="canRead(item.url)"
+            class="original"
+            :href="item.url"
+            target="_blank"
+            rel="noopener noreferrer"
+            :aria-label="`Otwórz oryginał: ${item.title}`"
+          >
+            Oryginał
+          </a>
         </div>
       </li>
     </ol>
@@ -126,13 +132,15 @@ h3 {
 .matches {
   color: var(--signal);
 }
-.read {
-  margin-left: auto;
-  color: var(--ink);
-  font-weight: 500;
+/* Own line under the meta, aligned with the rest of the column. */
+.original {
+  display: inline-block;
+  margin-top: 0.2rem;
+  color: var(--muted);
+  font-size: 0.8rem;
   text-decoration: none;
 }
-.read:hover {
+.original:hover {
   color: var(--signal);
   text-decoration: underline;
   text-underline-offset: 3px;

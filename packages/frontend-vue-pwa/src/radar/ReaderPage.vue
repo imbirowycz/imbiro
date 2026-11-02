@@ -41,9 +41,26 @@ const published = computed(() =>
     : null
 )
 
+/** Set while leaving for the original article (reader mode could not prepare the text). */
+const redirecting = ref(false)
+
+/**
+ * Clicking a news item opens reader mode first; when it fails, go straight to the original.
+ * `replace` drops this page from history, so Back returns to the dashboard, not to an error.
+ * Without a usable URL the error/fallback view below stays on screen.
+ */
+function openOriginal(): boolean {
+  const href = originalHref.value
+  if (!href) return false
+  redirecting.value = true
+  window.location.replace(href)
+  return true
+}
+
 async function load() {
   article.value = null
   error.value = null
+  redirecting.value = false
   if (!url.value) {
     error.value = 'Brak adresu artykułu.'
     return
@@ -51,9 +68,14 @@ async function load() {
   loading.value = true
   try {
     article.value = await radarApi.readArticle(url.value)
+    if (article.value.status !== 'success') {
+      openOriginal()
+      return
+    }
     if (article.value.title) document.title = `${article.value.title} – imbiro`
   } catch (err) {
     error.value = (err as Error).message
+    openOriginal()
   } finally {
     loading.value = false
   }
@@ -86,6 +108,10 @@ function goBack() {
     </nav>
 
     <p v-if="loading" class="state muted" role="status">Pobieranie i oczyszczanie artykułu…</p>
+
+    <p v-else-if="redirecting" class="state muted" role="status">
+      Nie udało się przygotować wersji do czytania — otwieram oryginał…
+    </p>
 
     <div v-else-if="error" class="state error" role="alert">
       <p>Nie udało się otworzyć artykułu: {{ error }}</p>
@@ -130,12 +156,25 @@ function goBack() {
   margin: 0 auto;
   padding: 1rem 1rem 5rem;
 }
+/* Stays at the top while reading, so Back and the original are always one tap away. */
 .bar {
+  position: sticky;
+  top: var(--bar-top, 0px);
+  z-index: 10;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  padding: 0.25rem 0 1.5rem;
+  margin: -1rem -1rem 1.5rem;
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid var(--line);
+  background: var(--night);
+}
+@media (max-width: 52rem) {
+  /* Below the sticky mobile bar of the app shell. */
+  .reader {
+    --bar-top: 3.25rem;
+  }
 }
 .back {
   display: inline-flex;
