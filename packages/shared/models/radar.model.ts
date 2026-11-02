@@ -3,7 +3,7 @@
 export type RadarGroupId = 'news' | 'finance' | 'alerts' | 'weather' | 'overview'
 
 /** Tells consumers (dashboard, delivery formatters) how to render `data` items. */
-export type RadarItemKind = 'currency-rate' | 'gold-price'
+export type RadarItemKind = 'currency-rate' | 'gold-price' | 'news'
 
 export type ModuleStatus = 'success' | 'partial' | 'error'
 
@@ -106,4 +106,30 @@ export interface GoldPrice {
   /** PLN per 1 g of gold (purity 1000). */
   pricePerGram: number
   change: number | null
+}
+
+export type NewsCategory = 'poland' | 'world' | 'warsaw' | 'economy' | 'it' | 'ai' | 'security'
+
+/**
+ * One news entry, normalized from RSS/Atom/API. Images are intentionally not included
+ * (decision: no external images — CSP and privacy).
+ */
+export interface NewsItem {
+  /** Source-specific id (GUID, Atom id, HN id) — stable between fetches. */
+  id: string
+  title: string
+  /** Plain text (HTML stripped), shortened; null when the source has none or repeats the title. */
+  summary: string | null
+  /** Canonical http(s) URL of the article. */
+  url: string
+  source: string
+  category: NewsCategory
+  publishedAt: string | null
+  author: string | null
+  /** Rule-based relevance (no AI): higher = closer to configured interests and fresher. */
+  relevance: {
+    score: number
+    /** Labels of matched interests, e.g. ["Vue", "Warszawa"]. */
+    matches: string[]
+  }
 }

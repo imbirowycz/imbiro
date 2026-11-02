@@ -1,4 +1,4 @@
-import type { CurrencyRate, GoldPrice, ModuleResult, RadarItemKind, RunResult } from '@myorg/shared'
+import type { CurrencyRate, GoldPrice, ModuleResult, NewsItem, RadarItemKind, RunResult } from '@myorg/shared'
 import type { ModuleRegistry } from '../core/module.registry'
 
 // Turns a RunResult into a channel-neutral digest, then renders it for Telegram (HTML) or e-mail.
@@ -46,24 +46,42 @@ const lineRenderers: Partial<Record<RadarItemKind, (item: unknown) => DigestLine
     const gold = item as GoldPrice
     return { text: `Złoto ${pln(gold.pricePerGram, 2)} zł/g${signed(gold.change, 2)}` }
   },
+  news: (item) => {
+    const news = item as NewsItem
+    return { text: news.title, url: news.url }
+  },
+}
+
+/** Key identifying the same item across modules (e.g. one RMF article in the Poland and Warsaw feeds). */
+function crossModuleKey(kind: RadarItemKind | null, item: unknown): string | null {
+  return kind === 'news' ? `news:${(item as NewsItem).url}` : null
 }
 
 export function buildDigest(title: string, run: RunResult, registry: ModuleRegistry, maxItemsPerModule: number): Digest {
-  return { title, sections: run.results.map((result) => toSection(result, registry, maxItemsPerModule)) }
+  const seen = new Set<string>()
+  return { title, sections: run.results.map((result) => toSection(result, registry, maxItemsPerModule, seen)) }
 }
 
-function toSection(result: ModuleResult, registry: ModuleRegistry, maxItems: number): DigestSection {
+function toSection(result: ModuleResult, registry: ModuleRegistry, maxItems: number, seen: Set<string>): DigestSection {
   const module = registry.get(result.moduleId)
   const render = result.itemKind ? lineRenderers[result.itemKind] : undefined
-  const shown = result.data.slice(0, maxItems)
+  // Items already shown in an earlier section are skipped, not counted as omitted.
+  const fresh = result.data.filter((item) => {
+    const key = crossModuleKey(result.itemKind, item)
+    if (!key) return true
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+  const shown = fresh.slice(0, maxItems)
   return {
     title: module.name,
     sourceName: result.source.name,
     attribution: result.source.attribution ?? null,
     dataAsOf: result.dataAsOf,
     unavailable: result.status === 'error' ? (result.error?.message ?? 'Źródło niedostępne') : null,
-    lines: render ? shown.map(render) : shown.length ? [{ text: `${result.data.length} elementów` }] : [],
-    omitted: render ? Math.max(0, result.data.length - shown.length) : 0,
+    lines: render ? shown.map(render) : shown.length ? [{ text: `${fresh.length} elementów` }] : [],
+    omitted: render ? Math.max(0, fresh.length - shown.length) : 0,
   }
 }
 

@@ -129,11 +129,71 @@ Wszystko pod `/api/radar`, za logowaniem i CSRF.
 
 `force: true` pomija cache, ale nie częściej niż raz na 60 s na moduł (ochrona źródeł).
 
+## Jak dodać nowe źródło RSS/Atom
+
+Bez pisania kodu — jeden wpis w `sources/news/news.feeds.ts`:
+
+```ts
+{ id: 'news.example', name: 'Example', category: 'it', url: 'https://example.com/feed.xml',
+  source: { name: 'Example', homepage: 'https://example.com' }, description: '…', cacheTtlMinutes: 60 },
+```
+
+Moduł trafia automatycznie do grupy swojej kategorii i do `news`. Przed dodaniem sprawdź:
+1. `curl -s -o /dev/null -w '%{http_code} %{redirect_url}' URL` — ma być 200 **bez przekierowania**
+   (podaj adres docelowy; ewentualny inny host dodaj w `extraHosts`).
+2. Czy to RSS 2.0, RSS 1.0 (RDF) albo Atom.
+3. Regulamin źródła i czy serwis nie blokuje botów (np. PAP — Incapsula; nie obchodzimy tego).
+4. Rozmiar (domyślny limit 2 MB; `maxBytes`).
+
+Źródło z własnym API (jak Hacker News) = osobny plik z `defineModule`, wynik w modelu `NewsItem`.
+
+## Przetwarzanie wiadomości
+
+```
+feed XML ─ parseFeed ─▶ FeedEntry[] ─ normalizeFeedEntry ─▶ NewsItem (bez relevance)
+   ─ dedupeNews ─ exclude ─ sort (data malejąco) ─ limit 30 ─ score ─▶ NewsItem[]
+```
+
+- `parsing/feed.parser.ts` — RSS 2.0 / RDF / Atom → jeden kształt. `fast-xml-parser` nie obsługuje encji
+  zewnętrznych (XXE) i ogranicza rozwijanie encji.
+- `parsing/text.ts` — HTML z feedu → krótki czysty tekst (wynik zawsze jest renderowany jako tekst).
+- `parsing/news.normalize.ts` — kanoniczny URL (tylko http/https, bez `#`, bez `utm_*`, `fbclid`…), daty RFC 822/ISO → ISO,
+  opis równy tytułowi → `null`, id = GUID albo hash URL.
+- `parsing/dedupe.ts` — duplikaty w obrębie jednego wyniku: po URL, po GUID i po znormalizowanym tytule w obrębie źródła.
+  Między modułami (np. ten sam artykuł RMF w feedzie „Polska” i „Warszawa”) deduplikuje raport (`delivery/digest.ts`).
+- Obrazków celowo nie ma w modelu (decyzja: CSP i prywatność).
+
+## Ocena istotności (bez AI)
+
+Reguły w `radar.config.ts` → `news.relevance`:
+
+- słowo kluczowe `vue` = całe słowo, `warszaw*` = przedrostek (odmiana: Warszawie, warszawskich),
+  `sztuczn* inteligencj*` = fraza; wielkość liter bez znaczenia;
+- punkty: waga × 2 za trafienie w tytule, × 1 tylko w opisie; +2 dla wpisów ≤ 3 h, +1 dla ≤ 12 h;
+- wpis starszy niż 7 dni (`staleAfterHours`) ma 0 pkt (dopasowania nadal są w `matches`);
+- `excludeKeywords` — wpisy z takim słowem w tytule są odrzucane.
+
+Moduły zwracają wpisy od najnowszych, z polem `relevance: { score, matches }`; ranking po istotności
+robi konsument (dashboard, przegląd poranny) — `byRelevance` w `parsing/relevance.ts`.
+
 ## Moduły
 
 | id | Źródło | Cache | Uwagi |
 |---|---|---|---|
 | `finance.nbp.currencies` | api.nbp.pl, tabela A (2 ostatnie) | 30 min | EUR, USD, CHF, GBP (`radar.config.ts`), zmiana vs poprzednia tabela |
 | `finance.nbp.gold` | api.nbp.pl, ceny złota (2 ostatnie) | 30 min | PLN za 1 g |
+| `news.hackernews` | HN Firebase API | 15 min | top 30, max 5 zapytań naraz, timeout 25 s |
+| `news.rmf.poland`, `news.tvn24.latest` | RSS | 15 min | Polska |
+| `news.rmf.world`, `news.bbc.world`, `news.guardian.world` | RSS | 15 min | Świat |
+| `news.rmf.warsaw`, `news.tvn24.warsaw` | RSS | 15 min | Warszawa |
+| `news.rmf.economy`, `news.bankier`, `news.bbc.business` | RSS | 15 min | Gospodarka |
+| `news.bbc.technology`, `news.nodejs`, `news.vue.blog`, `news.typescript.blog`, `news.javascriptweekly`, `news.postgresql`, `news.docker.blog` | RSS | 15 min – 3 h | IT; feed Node.js ma całą historię (~1000 wpisów) — bierzemy 30 najnowszych |
+| `news.github.releases.{vue,pinia,vite,express}` | Atom | 60 min | tytuł z prefiksem nazwy projektu |
+| `news.simonwillison` | Atom | 60 min | AI |
+| `news.cert.pl`, `news.sekurak`, `news.niebezpiecznik`, `news.thehackernews` | RSS/Atom | 60 min | Bezpieczeństwo |
 
-Grupy: `finance`.
+Grupy: `finance`, `news.poland`, `news.world`, `news.warsaw`, `news.economy`, `news.it` (IT + AI),
+`news.security`, `news` (wszystkie wiadomości).
+
+Odrzucone źródła: PAP (blokada anty-botowa), um.warszawa.pl/rss (404), HF blog (ok. 900 wpisów, mało przydatne),
+Kubernetes blog (1,1 MB), Reddit (blokuje serwery, niejasny regulamin), HN „best” (pokrywa się z „top”).

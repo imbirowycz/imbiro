@@ -21,6 +21,8 @@ export type {
   GoldPrice,
   ModuleResult,
   ModuleStatus,
+  NewsCategory,
+  NewsItem,
   RadarError,
   RadarErrorCode,
   RadarGroupId,
