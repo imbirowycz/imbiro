@@ -6,6 +6,7 @@ import NewsOrderToggle from './NewsOrderToggle.vue'
 import type { NewsOrder } from './news-order'
 import RadarSection from './RadarSection.vue'
 import SectionBody from './SectionBody.vue'
+import ReadUndoToast from './ReadUndoToast.vue'
 import SectionTabs from './SectionTabs.vue'
 import { useDashboard } from './useDashboard'
 
@@ -142,6 +143,8 @@ async function retryLayout() {
         </template>
       </RadarSection>
     </template>
+
+    <ReadUndoToast />
   </div>
 </template>
 

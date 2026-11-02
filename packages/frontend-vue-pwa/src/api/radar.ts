@@ -9,5 +9,8 @@ export const radarApi = {
     request<ModuleResult>('POST', `/radar/modules/${encodeURIComponent(id)}/run`, { force }),
   runGroup: (id: string, force = false) => request<RunResult>('POST', `/radar/groups/${encodeURIComponent(id)}/run`, { force }),
   runModules: (moduleIds: string[], force = false) => request<RunResult>('POST', '/radar/run', { moduleIds, force }),
+  markRead: (item: { url: string; title?: string | null; source?: string | null }) =>
+    request<void>('POST', '/radar/read-items', { url: item.url, title: item.title ?? null, source: item.source ?? null }),
+  unmarkRead: (url: string) => request<void>('DELETE', `/radar/read-items?url=${encodeURIComponent(url)}`),
   readArticle: (url: string) => request<ArticleView>('GET', `/radar/articles/read?url=${encodeURIComponent(url)}`),
 }

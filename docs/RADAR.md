@@ -209,6 +209,22 @@ GET /api/radar/dashboard  → układ sekcji + wyniki z cache (natychmiast, bez p
 2. Jeśli moduły zwracają nowy `itemKind` — komponent w `src/radar/items/` i jedna linia w `SectionBody.vue`.
 Zakładka, przewijanie, stany i odświeżanie działają bez dodatkowego kodu.
 
+## Przeczytane newsy
+
+Oznaczony news znika z dashboardu i nie trafia do przeglądu porannego (Telegram/e-mail).
+
+- Baza: tabela `radar_read_items` (migracja `004_radar_read_items.sql`), klucz = kanoniczny URL (`canonicalUrl`,
+  ten sam co `NewsItem.url`). Jeden użytkownik, bez `user_id`. Wpisy starsze niż 14 dni są kasowane przy zapisie.
+- API: `POST /api/radar/read-items` `{ url, title?, source? }` (204), `DELETE /api/radar/read-items?url=…` (204);
+  `GET /api/radar/dashboard` zwraca `readUrls` (ostatnie 14 dni).
+- Filtr działa w prezentacji, nie w modułach (cache modułów nie zna stanu użytkownika):
+  `NewsList` pomija przeczytane; `radar.deliver` przekazuje je do `buildDigest` jako `skipNewsUrls`.
+  Bloki „top 3” przeglądu porannego są liczone w module zbiorczym, więc po odfiltrowaniu mogą mieć mniej pozycji.
+  Gdy odczyt z bazy się nie uda, przegląd idzie bez filtra (nie blokujemy wysyłki).
+- Frontend (`src/radar/read-items.ts`): przycisk ✓ w wierszu newsa i „Przeczytane” w pasku czytnika.
+  Ukrycie jest natychmiastowe (optymistyczne), pasek „Cofnij” przez 6 s; błąd zapisu przywraca wpis z komunikatem.
+  Otwarcie artykułu NIE oznacza go jako przeczytany.
+
 ## Article Reader (tryb czytania)
 
 Pobiera **jeden** artykuł na żądanie użytkownika i zwraca oczyszczony tekst. Nic nie trafia do bazy;

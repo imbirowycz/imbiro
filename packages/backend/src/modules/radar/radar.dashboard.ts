@@ -41,10 +41,16 @@ export function buildDashboardSections(registry: ModuleRegistry): DashboardSecti
  * Layout plus whatever is already in the cache — returns immediately, never contacts a source.
  * The frontend renders this at once and then refreshes each section on its own.
  */
-export function dashboardSnapshot(sections: DashboardSection[], runner: ModuleRunner, readerDomains: string[]): DashboardLayout {
+export function dashboardSnapshot(
+  sections: DashboardSection[],
+  runner: ModuleRunner,
+  readerDomains: string[],
+  readUrls: string[]
+): DashboardLayout {
   return {
     generatedAt: new Date().toISOString(),
     readerDomains,
+    readUrls,
     sections: sections.map((section) => ({
       ...section,
       results: section.moduleIds.map((id) => runner.peek(id)),

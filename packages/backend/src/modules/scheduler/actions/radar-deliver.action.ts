@@ -5,6 +5,7 @@ import type { ModuleRegistry } from '../../radar/core/module.registry'
 import { MAX_MODULES_PER_RUN, type ModuleRunner } from '../../radar/core/module.runner'
 import { buildDigest, renderEmail, renderTelegram } from '../../radar/delivery/digest'
 import { radarRegistry, radarRunner } from '../../radar/radar.catalog'
+import { createReadItemsRepository } from '../../radar/read-items.repository'
 import { parseWith } from './action.registry'
 import { ActionConfigurationError, type ActionHandler } from './action.types'
 import { EmailSender } from './delivery/email.client'
@@ -67,6 +68,8 @@ export interface RadarDeliverDeps {
   getTelegramToken?: () => string | undefined
   fetchImpl?: typeof fetch
   email?: EmailSender
+  /** URLs of news marked as read (skipped in the digest). */
+  getReadUrls?: () => Promise<string[]>
 }
 
 export function createRadarDeliverAction(deps: RadarDeliverDeps = {}): ActionHandler<RadarDeliverConfig> {
@@ -74,6 +77,7 @@ export function createRadarDeliverAction(deps: RadarDeliverDeps = {}): ActionHan
   const runner = deps.runner ?? radarRunner
   const getTelegramToken = deps.getTelegramToken ?? (() => config.integrations.telegram.botToken)
   const email = deps.email ?? new EmailSender()
+  const getReadUrls = deps.getReadUrls ?? (() => createReadItemsRepository().listUrls())
   const schema = configSchema(registry)
 
   return {
@@ -104,7 +108,12 @@ export function createRadarDeliverAction(deps: RadarDeliverDeps = {}): ActionHan
         throw new Error(`All radar modules failed: ${modules.map((m) => `${m.id} ${m.error}`).join(', ')}`)
       }
 
-      const digest = buildDigest(cfg.title ?? context.taskTitle, run, registry, cfg.maxItemsPerModule)
+      // A failed lookup must not block the morning digest: send it with read news included.
+      const readUrls = await getReadUrls().catch((err: unknown) => {
+        context.log(`read items unavailable, sending without the filter: ${(err as Error).message}`)
+        return [] as string[]
+      })
+      const digest = buildDigest(cfg.title ?? context.taskTitle, run, registry, cfg.maxItemsPerModule, { skipNewsUrls: readUrls })
 
       // Only a summary goes back to the scheduler (task_executions.result) — never the fetched data.
       const summary = { target: cfg.target, runStatus: run.status, modules }

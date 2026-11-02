@@ -126,8 +126,20 @@ function crossModuleKey(kind: RadarItemKind | null, item: unknown): string | nul
   return kind === 'news' ? `news:${(item as NewsItem).url}` : null
 }
 
-export function buildDigest(title: string, run: RunResult, registry: ModuleRegistry, maxItemsPerModule: number): Digest {
-  const seen = new Set<string>()
+export interface DigestOptions {
+  /** News marked as read: skipped like duplicates (not counted as omitted). */
+  skipNewsUrls?: Iterable<string>
+}
+
+export function buildDigest(
+  title: string,
+  run: RunResult,
+  registry: ModuleRegistry,
+  maxItemsPerModule: number,
+  options: DigestOptions = {}
+): Digest {
+  // Read news are pre-seeded as "already shown", so the same dedupe path skips them.
+  const seen = new Set<string>([...(options.skipNewsUrls ?? [])].map((url) => `news:${url}`))
   return {
     title,
     sections: run.results.flatMap((result) =>

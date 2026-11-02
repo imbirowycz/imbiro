@@ -266,6 +266,8 @@ export interface DashboardLayout {
   generatedAt: string
   /** Domains the Article Reader accepts (an article URL on the domain or a subdomain). */
   readerDomains: string[]
+  /** Canonical URLs of news marked as read (recent ones) — the dashboard hides them. */
+  readUrls: string[]
   sections: (DashboardSection & { results: (ModuleResult | null)[] })[]
 }
 

@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import type { ArticleView } from '@myorg/shared'
 import { radarApi } from '../api/radar'
+import { markRead } from './read-items'
 
 // Reader mode: one article, fetched on demand, shown as plain readable text.
 // The HTML comes from the server already sanitized (structure and links only); the page CSP
@@ -87,6 +88,13 @@ function goBack() {
   if (window.history.state?.back) router.back()
   else void router.push('/')
 }
+
+/** Hide this news on the dashboard for good and go back to it (where "Undo" is shown). */
+function markAsReadAndBack() {
+  if (!url.value) return
+  void markRead({ url: url.value, title: article.value?.title ?? url.value, source: article.value?.source ?? null })
+  goBack()
+}
 </script>
 
 <template>
@@ -96,15 +104,15 @@ function goBack() {
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
         Wróć
       </button>
-      <a
-        v-if="originalHref && article?.status === 'success'"
-        class="original"
-        :href="originalHref"
-        target="_blank"
-        rel="noopener noreferrer"
-      >
-        Otwórz oryginał
-      </a>
+      <div v-if="article?.status === 'success'" class="actions">
+        <button type="button" class="mark-read" @click="markAsReadAndBack">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
+          Przeczytane
+        </button>
+        <a v-if="originalHref" class="original" :href="originalHref" target="_blank" rel="noopener noreferrer">
+          Otwórz oryginał
+        </a>
+      </div>
     </nav>
 
     <p v-if="loading" class="state muted" role="status">Pobieranie i oczyszczanie artykułu…</p>
@@ -199,6 +207,37 @@ function goBack() {
   fill: none;
   stroke: currentColor;
   stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.mark-read {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.35rem 0.75rem 0.35rem 0.55rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+.mark-read:hover {
+  border-color: var(--ok);
+  color: var(--ok);
+}
+.mark-read svg {
+  width: 1rem;
+  height: 1rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
