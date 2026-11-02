@@ -2,12 +2,14 @@
 
 Monorepo: Vue 3 (Vite, PWA) + Express (TypeScript) + PostgreSQL + wspólny pakiet `@myorg/shared`. Kod frontendu: katalog `packages/frontend-vue-pwa` (pakiet npm `@myorg/frontend-vue-pwa`).
 
+Funkcje: **Personal Radar** (strona główna — wiadomości, pogoda, finanse, alerty, tryb czytania; opis w [`docs/RADAR.md`](docs/RADAR.md)) i **Scheduler** (`/scheduler` — zadania wg harmonogramu, m.in. wysyłka raportów Radaru na Telegram/e-mail).
+
 ## Adresy i dostęp do bazy
 
 | Usługa   | URL / host              | Uwagi                                      |
 |----------|-------------------------|--------------------------------------------|
 | Frontend | http://localhost:5173   | Vite w dev; w Dockerze statyczny `serve`   |
-| Backend  | http://localhost:3000   | API `/api/auth/*`, `/api/scheduler/*` (po zalogowaniu), `/health` |
+| Backend  | http://localhost:3000   | API `/api/auth/*`, `/api/scheduler/*`, `/api/radar/*` (po zalogowaniu), `/health` |
 | Postgres | `localhost:5432`        | Użytkownik: `user`, hasło: `password`, baza: `app` |
 
 ## Pierwsze uruchomienie (zależności)

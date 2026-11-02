@@ -1,6 +1,6 @@
 import type { DashboardLayout, DashboardSection } from '@myorg/shared'
 import type { ModuleRegistry } from './core/module.registry'
-import type { ModuleRunner } from './core/module.runner'
+import { MAX_MODULES_PER_RUN, type ModuleRunner } from './core/module.runner'
 
 // Layout of the Home dashboard: which modules feed which section. Kept on the server so the
 // frontend never hard-codes module ids. Each section is loaded and refreshed independently.
@@ -24,13 +24,17 @@ const SECTIONS: SectionDefinition[] = [
 ]
 
 export function buildDashboardSections(registry: ModuleRegistry): DashboardSection[] {
-  return SECTIONS.map((section) => ({
-    id: section.id,
-    title: section.title,
-    moduleIds: [
+  return SECTIONS.map((section) => {
+    const moduleIds = [
       ...new Set(section.modules.flatMap((ref) => (ref.group ? registry.getGroup(ref.group).moduleIds : [ref.module!]))),
-    ].map((id) => registry.get(id).id),
-  }))
+    ].map((id) => registry.get(id).id)
+    // The frontend refreshes a section with one POST /run, which accepts at most MAX_MODULES_PER_RUN ids.
+    // Fail at startup instead of a section silently answering 400 after someone adds feeds.
+    if (moduleIds.length > MAX_MODULES_PER_RUN) {
+      throw new Error(`Dashboard section "${section.id}" has ${moduleIds.length} modules (max ${MAX_MODULES_PER_RUN}) — split it`)
+    }
+    return { id: section.id, title: section.title, moduleIds }
+  })
 }
 
 /**

@@ -126,6 +126,28 @@ Zachowanie:
 - wszystkie moduły z błędem → wykonanie się nie udaje i scheduler ponawia je z backoffem;
 - część modułów z błędem → raport jest wysyłany, a niedostępne sekcje są oznaczone.
 
+### Gotowe konfiguracje (w formularzu: akcja **Radar**)
+
+| Scenariusz | Harmonogram | `actionConfig` |
+|---|---|---|
+| A — osobne zadania | cron `0 7 * * *`, `5 7 * * *`, `10 7 * * *`, strefa `Europe/Warsaw` | po jednym zadaniu: `{ "target": { "kind": "module", "id": "weather.current" }, "channel": { "type": "telegram", "chatId": "<id>" } }`, potem `news.rmf.poland`, `finance.nbp.currencies` |
+| B — jedna grupa | cron `0 7 * * *` | `{ "target": { "kind": "group", "id": "news.poland" }, "channel": { "type": "telegram", "chatId": "<id>" }, "maxItemsPerModule": 5 }` |
+| C — przegląd poranny | cron `0 7 * * 1-5` (dni robocze) | `{ "target": { "kind": "module", "id": "morning.overview" }, "channel": { "type": "telegram", "chatId": "<id>" }, "maxItemsPerModule": 7 }` |
+| własna lista | dowolny | `{ "target": { "kind": "modules", "ids": ["weather.current", "alerts.imgw", "finance.nbp.currencies"] }, ... }` |
+
+Uwaga: zadanie z id modułu, którego już nie ma w katalogu (np. usunięte TVN24), kończy się błędem
+„Invalid action config” bez ponowień — widać go w historii wykonań; wystarczy edytować zadanie.
+
+## Znane ograniczenia
+
+- Brak testów automatycznych modułów Radaru (świadoma decyzja na tym etapie) — weryfikacja: `npx tsc`, build i ręczne
+  wywołania API. Kontrakty są jednak walidowane w runtime (zod) na wejściu z każdego źródła.
+- Cache w pamięci jest osobny dla API i Workera i znika po restarcie/deployu — pierwsze odświeżenie po wdrożeniu trwa dłużej.
+- `alerts.warsaw` to filtr słów kluczowych na RSS ZTM/WTP (bez daty końca komunikatu) — może pokazywać komunikaty już nieaktualne.
+- IMGW hydro filtrowane po województwie i nazwie rzeki (brak TERYT) — obejmuje też odcinki Wisły daleko od Warszawy.
+- Źródła mogą blokować IP serwerów (tak było z TVN24 i stronami artykułów thehackernews.com) — nowe źródło sprawdzaj z serwera.
+- jsdom parsuje HTML synchronicznie: duży artykuł może na ~100–300 ms zająć proces API (limit 2 naraz, 3 MB).
+
 ## API
 
 Wszystko pod `/api/radar`, za logowaniem i CSRF.

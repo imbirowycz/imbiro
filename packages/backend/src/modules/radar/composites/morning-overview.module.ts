@@ -2,6 +2,7 @@ import { z } from 'zod'
 import type { AirQualityStation, AlertItem, ModuleResult, NewsItem, OverviewBlock } from '@myorg/shared'
 import { aggregateStatus } from '../core/module.runner'
 import { defineModule } from '../core/module.types'
+import { RadarSourceError } from '../core/radar.errors'
 import { dedupeNews } from '../parsing/dedupe'
 import { byRelevance } from '../parsing/relevance'
 import { bySeverity } from '../sources/alerts/alert.schema'
@@ -91,6 +92,11 @@ export function createMorningOverviewModule(sources: MorningOverviewSources, top
 
     async execute({ run }) {
       const result = await run({ kind: 'modules', ids: all })
+      // Nothing worked → the overview fails too. Otherwise a scheduled delivery would send a report made
+      // only of "unavailable" lines instead of retrying later.
+      if (result.status === 'error') {
+        throw new RadarSourceError('NETWORK_ERROR', 'Żadne ze źródeł przeglądu nie odpowiedziało')
+      }
       const byId = new Map(result.results.map((r) => [r.moduleId, r]))
       const pick = (ids: string[]) => ids.map((id) => byId.get(id)).filter((r): r is ModuleResult => !!r)
 
