@@ -42,13 +42,18 @@ onMounted(async () => {
   <p v-if="checking" class="boot muted">Ładowanie…</p>
   <p v-else-if="startError && !session" class="boot load-error">{{ startError }}</p>
   <AppShell v-else-if="session" :user="session.user" @logout="logout">
-    <RouterView />
+    <!-- Home stays alive: back from the reader returns to the same place without refetching. -->
+    <RouterView v-slot="{ Component }">
+      <KeepAlive include="HomePage">
+        <component :is="Component" />
+      </KeepAlive>
+    </RouterView>
   </AppShell>
   <LoginForm v-else :notice="loginNotice" @logged-in="session = $event; loginNotice = null" />
 </template>
 
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@500;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap');
 
 :root {
   --night: #0f1a2e;
@@ -63,6 +68,8 @@ onMounted(async () => {
   --warn: #f29a5c;
   --font-display: 'Barlow Semi Condensed', 'Arial Narrow', system-ui, sans-serif;
   --font-body: 'Barlow', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  /* Reader mode: long-form text reads better in a serif. Downloaded only when used. */
+  --font-reading: 'Source Serif 4', Georgia, 'Times New Roman', serif;
   --font-code: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
   color-scheme: dark;
 }

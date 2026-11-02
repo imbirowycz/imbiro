@@ -132,7 +132,8 @@ Wszystko pod `/api/radar`, za logowaniem i CSRF.
 
 | Metoda | Ścieżka | Wynik |
 |---|---|---|
-| GET | `/dashboard` | `DashboardLayout` — układ sekcji + wyniki z cache |
+| GET | `/dashboard` | `DashboardLayout` — układ sekcji + wyniki z cache + domeny czytnika |
+| GET | `/articles/read?url=` | `ArticleView` — tryb czytania (429, gdy czytnik zajęty) |
 | GET | `/modules` | `RadarModuleInfo[]` |
 | GET | `/groups` | `RadarGroupInfo[]` |
 | POST | `/modules/:id/run` body `{ force? }` | `ModuleResult` |
@@ -166,6 +167,29 @@ GET /api/radar/dashboard  → układ sekcji + wyniki z cache (natychmiast, bez p
 1. Wpis w `SECTIONS` w `radar.dashboard.ts`: `{ id: 'security', title: 'Bezpieczeństwo', modules: [{ group: 'news.security' }] }`.
 2. Jeśli moduły zwracają nowy `itemKind` — komponent w `src/radar/items/` i jedna linia w `SectionBody.vue`.
 Zakładka, przewijanie, stany i odświeżanie działają bez dodatkowego kodu.
+
+## Article Reader (tryb czytania)
+
+Pobiera **jeden** artykuł na żądanie użytkownika i zwraca oczyszczony tekst. Nic nie trafia do bazy;
+w pamięci procesu API jest cache (30 min sukces, 5 min błąd, max 100 adresów). Podczas pobierania RSS treści
+artykułów nie są pobierane.
+
+```
+GET /api/radar/articles/read?url=…  →  ArticleView { status: success | unavailable | unsupported, … }
+  1. canonicalUrl (http→https, bez #, bez utm_*) — niepoprawny adres → unsupported (adres nie jest odsyłany)
+  2. domena na liście `radarConfig.reader.allowedDomains` (domena lub subdomena) — inaczej unsupported
+  3. safe-fetch: https, max 3 przekierowania (każde znowu przez allowlistę), 3 MB, timeout 15 s
+     + SSRF guard (reader/ssrf-guard.ts): połączenie tylko na publiczne IP, sprawdzane w DNS lookup samego połączenia
+  4. jsdom (bez skryptów i zasobów) → @mozilla/readability → < 600 znaków = unavailable (paywall/nietypowa strona)
+  5. sanitize-html: tylko struktura tekstu i linki (bez obrazków, iframe, stylów, atrybutów on*), linki z rel="noopener noreferrer nofollow"
+```
+
+- Limit: 2 ekstrakcje naraz, kolejka 8, potem HTTP 429 (jsdom jest ciężki dla 2 vCPU).
+- Paywalle i logowania **nie są omijane** — czytnik dostaje to, co strona pokazuje publicznie.
+- Frontend: `/read?url=…` (`src/radar/ReaderPage.vue`), przycisk „Czytaj” tylko przy linkach z dozwolonych domen
+  (lista z `GET /api/radar/dashboard` → `readerDomains`). Link do oryginału renderowany tylko dla http(s).
+- Dodanie domeny: wpis w `reader.allowedDomains`; najpierw sprawdź, że strona artykułu odpowiada 200 dla zwykłego
+  klienta HTTP (np. thehackernews.com zwraca 403 — dlatego go nie ma).
 
 ## Jak dodać nowe źródło RSS/Atom
 

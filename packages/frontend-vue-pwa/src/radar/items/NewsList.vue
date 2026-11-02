@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue'
 import type { NewsItem } from '@myorg/shared'
 import { shortWhen } from '../format'
+import { canRead } from '../reader'
 
 const props = withDefaults(
   defineProps<{ items: NewsItem[]; limit?: number; heading?: string; sortable?: boolean; showSummary?: boolean }>(),
@@ -48,6 +49,14 @@ const now = new Date()
           <p class="meta">
             <span>{{ item.source }}</span>
             <span v-if="item.relevance.matches.length" class="matches">{{ item.relevance.matches.join(', ') }}</span>
+            <RouterLink
+              v-if="canRead(item.url)"
+              class="read"
+              :to="{ name: 'read', query: { url: item.url } }"
+              :aria-label="`Czytaj w trybie czytania: ${item.title}`"
+            >
+              Czytaj
+            </RouterLink>
           </p>
         </div>
       </li>
@@ -152,6 +161,17 @@ h3 {
 }
 .matches {
   color: var(--signal);
+}
+.read {
+  margin-left: auto;
+  color: var(--ink);
+  font-weight: 500;
+  text-decoration: none;
+}
+.read:hover {
+  color: var(--signal);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 .more {
   margin-top: 0.6rem;

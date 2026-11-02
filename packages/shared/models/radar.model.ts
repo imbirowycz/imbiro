@@ -258,5 +258,37 @@ export interface DashboardSection {
 /** GET /api/radar/dashboard — layout plus cached results (null = not fetched yet). */
 export interface DashboardLayout {
   generatedAt: string
+  /** Domains the Article Reader accepts (an article URL on the domain or a subdomain). */
+  readerDomains: string[]
   sections: (DashboardSection & { results: (ModuleResult | null)[] })[]
+}
+
+// ---- Article Reader ----
+
+/**
+ * success     — article extracted and sanitized
+ * unavailable — fetched, but no readable content (paywall, unusual page, error); open the original
+ * unsupported — domain is not on the reader allowlist
+ */
+export type ArticleStatus = 'success' | 'unavailable' | 'unsupported'
+
+/** GET /api/radar/articles/read?url= — nothing of it is stored in the database. */
+export interface ArticleView {
+  status: ArticleStatus
+  /** The URL that was requested (canonical form). Always present, so the user can open the original. */
+  url: string
+  title: string | null
+  author: string | null
+  /** Site name, e.g. "RMF24", or the host name. */
+  source: string
+  publishedAt: string | null
+  excerpt: string | null
+  /** Sanitized HTML: text structure and links only (no scripts, styles, images, embeds). */
+  html: string | null
+  text: string | null
+  wordCount: number
+  readingMinutes: number
+  fetchedAt: string
+  /** User-facing explanation for unavailable/unsupported. */
+  message: string | null
 }

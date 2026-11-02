@@ -1,16 +1,23 @@
 import { Router } from 'express'
 import { z } from 'zod'
 import type { RunTarget } from '@myorg/shared'
-import { NotFoundError, ValidationError } from '../../errors'
+import { NotFoundError, TooManyRequestsError, ValidationError } from '../../errors'
 import { asyncHandler } from '../../http'
 import type { ModuleRegistry } from './core/module.registry'
 import { MAX_MODULES_PER_RUN, type ModuleRunner } from './core/module.runner'
 import { radarRegistry, radarRunner } from './radar.catalog'
+import { radarConfig } from './radar.config'
 import { buildDashboardSections, dashboardSnapshot } from './radar.dashboard'
+import { ArticleReader, ReaderBusyError } from './reader/article-reader'
 
 type IdParams = { id: string }
 
 const runOptionsSchema = z.strictObject({ force: z.boolean().default(false) })
+const readQuerySchema = z.object({ url: z.string().trim().min(8).max(2000) })
+
+/** Reader instance of the API process (the Worker never reads articles). */
+const defaultReader = () => new ArticleReader({ allowedDomains: radarConfig.reader.allowedDomains })
+
 const runManySchema = z.strictObject({
   moduleIds: z.array(z.string().min(1).max(100)).min(1).max(MAX_MODULES_PER_RUN),
   force: z.boolean().default(false),
@@ -32,15 +39,34 @@ function parseBody<T>(schema: z.ZodType<T>, body: unknown): T {
  * the rest of /api. Module results are computed on demand (with an in-memory cache) and never stored.
  * A module failure is a normal 200 response with status "error" — it is data, not an API error.
  */
-export function createRadarRouter(registry: ModuleRegistry = radarRegistry, runner: ModuleRunner = radarRunner): Router {
+export function createRadarRouter(
+  registry: ModuleRegistry = radarRegistry,
+  runner: ModuleRunner = radarRunner,
+  reader: ArticleReader = defaultReader()
+): Router {
   const router = Router()
   // Resolved once: groups are static, and a broken layout should fail at startup.
   const dashboardSections = buildDashboardSections(registry)
 
   // Instant: layout + cached results only. Sections are then refreshed via POST /run.
   router.get('/dashboard', (_req, res) => {
-    res.json(dashboardSnapshot(dashboardSections, runner))
+    res.json(dashboardSnapshot(dashboardSections, runner, reader.domains))
   })
+
+  // Reader mode on demand. GET is fine: it changes nothing (CSRF protects state changes),
+  // and the result is not stored anywhere except a short in-memory cache.
+  router.get(
+    '/articles/read',
+    asyncHandler(async (req, res) => {
+      const { url } = parseBody(readQuerySchema, req.query)
+      try {
+        res.json(await reader.read(url))
+      } catch (err) {
+        if (err instanceof ReaderBusyError) throw new TooManyRequestsError('Czytnik jest zajęty, spróbuj za chwilę', 5)
+        throw err
+      }
+    })
+  )
 
   router.get('/modules', (_req, res) => {
     res.json(registry.listModules())

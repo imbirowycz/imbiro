@@ -7,6 +7,12 @@ export const router = createRouter({
   routes: [
     { path: '/', name: 'home', component: () => import('./radar/HomePage.vue'), meta: { title: 'Radar' } },
     {
+      path: '/read',
+      name: 'read',
+      component: () => import('./radar/ReaderPage.vue'),
+      meta: { title: 'Czytanie' },
+    },
+    {
       path: '/scheduler/:taskId?',
       name: 'scheduler',
       component: () => import('./components/SchedulerPage.vue'),

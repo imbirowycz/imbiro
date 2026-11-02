@@ -37,12 +37,15 @@ export interface HttpClient {
 
 export interface HttpClientOptions {
   allowedHosts: readonly string[]
+  /** Alternative rule (e.g. "domain and its subdomains"); when set, it replaces `allowedHosts`. */
+  isAllowedHost?: (hostname: string) => boolean
   fetchImpl?: typeof fetch
   sleep?: (ms: number, signal: AbortSignal) => Promise<void>
 }
 
-export function createHttpClient({ allowedHosts, fetchImpl = fetch, sleep = abortableSleep }: HttpClientOptions): HttpClient {
+export function createHttpClient({ allowedHosts, isAllowedHost, fetchImpl = fetch, sleep = abortableSleep }: HttpClientOptions): HttpClient {
   const hosts = new Set(allowedHosts.map((host) => host.toLowerCase()))
+  const allowed = isAllowedHost ?? ((hostname: string) => hosts.has(hostname))
 
   async function getText(url: string, options: RequestOptions): Promise<TextResponse> {
     const retries = options.retries ?? DEFAULT_RETRIES
@@ -59,7 +62,7 @@ export function createHttpClient({ allowedHosts, fetchImpl = fetch, sleep = abor
   }
 
   async function fetchOnce(initialUrl: string, options: RequestOptions): Promise<TextResponse> {
-    let url = assertAllowed(initialUrl, hosts)
+    let url = assertAllowed(initialUrl, allowed)
 
     for (let redirects = 0; ; redirects++) {
       const response = await fetchImpl(url, {
@@ -74,7 +77,7 @@ export function createHttpClient({ allowedHosts, fetchImpl = fetch, sleep = abor
         const location = response.headers.get('location')
         if (!location) throw new RadarSourceError('HTTP_ERROR', `Źródło zwróciło przekierowanie bez adresu (${response.status})`)
         if (redirects >= MAX_REDIRECTS) throw new RadarSourceError('HTTP_ERROR', 'Zbyt wiele przekierowań')
-        url = assertAllowed(new URL(location, url).toString(), hosts)
+        url = assertAllowed(new URL(location, url).toString(), allowed)
         continue
       }
 
@@ -112,7 +115,7 @@ export function createHttpClient({ allowedHosts, fetchImpl = fetch, sleep = abor
 }
 
 /** Returns the normalized URL or throws BLOCKED_URL. */
-export function assertAllowed(rawUrl: string, hosts: ReadonlySet<string>): string {
+export function assertAllowed(rawUrl: string, isAllowed: (hostname: string) => boolean): string {
   let url: URL
   try {
     url = new URL(rawUrl)
@@ -122,7 +125,7 @@ export function assertAllowed(rawUrl: string, hosts: ReadonlySet<string>): strin
   if (url.protocol !== 'https:') throw new RadarSourceError('BLOCKED_URL', 'Dozwolone są tylko adresy https')
   if (url.username || url.password) throw new RadarSourceError('BLOCKED_URL', 'Adres nie może zawierać danych logowania')
   if (url.port && url.port !== '443') throw new RadarSourceError('BLOCKED_URL', 'Niedozwolony port')
-  if (!hosts.has(url.hostname.toLowerCase())) {
+  if (!isAllowed(url.hostname.toLowerCase())) {
     throw new RadarSourceError('BLOCKED_URL', `Host ${url.hostname} nie jest na liście dozwolonych`)
   }
   return url.toString()
@@ -198,6 +201,11 @@ export function decodeBody(bytes: Uint8Array, contentType: string): string {
 export function toSourceError(err: unknown, signal: AbortSignal): RadarSourceError {
   if (err instanceof RadarSourceError) return err
   if (signal.aborted) return abortError(signal)
+  // SSRF guard (reader): the connection was refused because the host resolves to an internal address.
+  for (let cause = err as { code?: string; cause?: unknown } | undefined, depth = 0; cause && depth < 5; depth++) {
+    if (cause.code === 'EBLOCKEDADDRESS') return new RadarSourceError('BLOCKED_URL', 'Adres prowadzi do sieci wewnętrznej')
+    cause = cause.cause as typeof cause
+  }
   // fetch() network failures (DNS, connection reset, TLS) surface as TypeError.
   return new RadarSourceError('NETWORK_ERROR', 'Brak połączenia ze źródłem', true)
 }

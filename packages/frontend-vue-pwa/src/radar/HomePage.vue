@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onActivated, onBeforeUnmount, onDeactivated, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { longToday } from './format'
 import RadarSection from './RadarSection.vue'
@@ -73,6 +73,10 @@ onMounted(async () => {
   // …then every section refreshes on its own.
   await refreshAll(false)
 })
+
+// Kept alive while the reader is open: pause the timers, resume on return.
+onDeactivated(() => stopAutoRefresh())
+onActivated(() => startAutoRefresh())
 
 onBeforeUnmount(() => {
   clearInterval(clock)

@@ -1,4 +1,4 @@
-import type { DashboardLayout, ModuleResult, RadarGroupInfo, RadarModuleInfo, RunResult } from '@myorg/shared'
+import type { ArticleView, DashboardLayout, ModuleResult, RadarGroupInfo, RadarModuleInfo, RunResult } from '@myorg/shared'
 import { request } from './client'
 
 export const radarApi = {
@@ -9,4 +9,5 @@ export const radarApi = {
     request<ModuleResult>('POST', `/radar/modules/${encodeURIComponent(id)}/run`, { force }),
   runGroup: (id: string, force = false) => request<RunResult>('POST', `/radar/groups/${encodeURIComponent(id)}/run`, { force }),
   runModules: (moduleIds: string[], force = false) => request<RunResult>('POST', '/radar/run', { moduleIds, force }),
+  readArticle: (url: string) => request<ArticleView>('GET', `/radar/articles/read?url=${encodeURIComponent(url)}`),
 }

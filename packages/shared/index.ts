@@ -23,6 +23,8 @@ export type {
   AlertCategory,
   AlertItem,
   AlertSeverity,
+  ArticleStatus,
+  ArticleView,
   CurrencyRate,
   DashboardLayout,
   DashboardSection,

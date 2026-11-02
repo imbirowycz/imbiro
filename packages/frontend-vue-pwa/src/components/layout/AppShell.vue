@@ -52,6 +52,8 @@ const nav = [
   { to: '/', name: 'home', label: 'Home', icon: 'radar' },
   { to: '/scheduler', name: 'scheduler', label: 'Scheduler', icon: 'clock' },
 ] as const
+// The reader is part of Home (opened from the dashboard).
+const isActive = (name: string) => route.name === name || (name === 'home' && route.name === 'read')
 </script>
 
 <template>
@@ -95,8 +97,8 @@ const nav = [
           <RouterLink
             :to="item.to"
             class="link"
-            :class="{ active: route.name === item.name }"
-            :aria-current="route.name === item.name ? 'page' : undefined"
+            :class="{ active: isActive(item.name) }"
+            :aria-current="isActive(item.name) ? 'page' : undefined"
             :title="collapsed ? item.label : undefined"
           >
             <svg v-if="item.icon === 'radar'" viewBox="0 0 24 24" aria-hidden="true">
