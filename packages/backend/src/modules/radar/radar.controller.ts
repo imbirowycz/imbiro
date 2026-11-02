@@ -6,6 +6,7 @@ import { asyncHandler } from '../../http'
 import type { ModuleRegistry } from './core/module.registry'
 import { MAX_MODULES_PER_RUN, type ModuleRunner } from './core/module.runner'
 import { radarRegistry, radarRunner } from './radar.catalog'
+import { buildDashboardSections, dashboardSnapshot } from './radar.dashboard'
 
 type IdParams = { id: string }
 
@@ -33,6 +34,13 @@ function parseBody<T>(schema: z.ZodType<T>, body: unknown): T {
  */
 export function createRadarRouter(registry: ModuleRegistry = radarRegistry, runner: ModuleRunner = radarRunner): Router {
   const router = Router()
+  // Resolved once: groups are static, and a broken layout should fail at startup.
+  const dashboardSections = buildDashboardSections(registry)
+
+  // Instant: layout + cached results only. Sections are then refreshed via POST /run.
+  router.get('/dashboard', (_req, res) => {
+    res.json(dashboardSnapshot(dashboardSections, runner))
+  })
 
   router.get('/modules', (_req, res) => {
     res.json(registry.listModules())

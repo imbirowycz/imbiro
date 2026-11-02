@@ -344,7 +344,7 @@ const radarTargetKinds: { value: RadarTargetKind; label: string }[] = [
           </label>
 
           <label v-else-if="form.radarTargetKind === 'module'" class="field">
-            <span>Moduł</span>
+            <span>Który moduł</span>
             <select v-model="form.radarModuleId" :aria-invalid="!!fieldError('actionConfig.target')">
               <optgroup v-for="[group, modules] in radarModulesByGroup" :key="group" :label="group">
                 <option v-for="m in modules" :key="m.id" :value="m.id">{{ m.name }}</option>

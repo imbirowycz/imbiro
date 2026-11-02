@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import type { AdminUser, ScheduledTask, TaskExecution } from '@myorg/shared'
+import { useRoute, useRouter } from 'vue-router'
+import type { ScheduledTask, TaskExecution } from '@myorg/shared'
 import { schedulerApi, type ActionInfo } from '../api/scheduler'
 import TaskBoard from './TaskBoard.vue'
 import TaskDetail from './TaskDetail.vue'
 import TaskForm from './TaskForm.vue'
 
-defineProps<{ user: AdminUser }>()
-const emit = defineEmits<{ logout: [] }>()
+const route = useRoute()
+const router = useRouter()
 
 const POLL_MS = 5000
 
@@ -95,16 +96,22 @@ function onSaved(task: ScheduledTask) {
   say(isNew ? `Utworzono „${task.title}”.` : `Zapisano zmiany w „${task.title}”.`)
 }
 
-// Wybrane zadanie w adresie (#/<id>) — przetrwa odświeżenie i daje link do zadania.
-const selectedFromHash = () => location.hash.replace(/^#\/?/, '') || null
-selectedId.value = selectedFromHash()
+// Wybrane zadanie w adresie (/scheduler/<id>) — przetrwa odświeżenie i daje link do zadania.
+const taskIdFromRoute = () => (typeof route.params.taskId === 'string' && route.params.taskId) || null
+selectedId.value = taskIdFromRoute()
 
 watch(selectedId, (id) => {
   executions.value = []
   void loadExecutions()
-  const hash = id ? `#/${id}` : ''
-  if (location.hash !== hash) history.replaceState(null, '', hash || location.pathname)
+  if (taskIdFromRoute() !== id) void router.replace({ name: 'scheduler', params: { taskId: id ?? undefined } })
 })
+// Wstecz/dalej w przeglądarce zmienia trasę — zaznaczenie idzie za nią.
+watch(
+  () => route.params.taskId,
+  () => {
+    if (route.name === 'scheduler') selectedId.value = taskIdFromRoute()
+  }
+)
 
 let timer: ReturnType<typeof setInterval> | undefined
 function tick() {
@@ -131,13 +138,11 @@ onBeforeUnmount(() => {
   <div class="shell" :class="{ 'has-selection': !!selected }">
     <header class="top">
       <div>
-        <h1>imbiro</h1>
+        <h1>Scheduler</h1>
         <p class="lede">Zadania uruchamiane według harmonogramu</p>
       </div>
       <div class="top-actions">
         <button type="button" class="button primary" @click="form = { task: null }">Nowe zadanie</button>
-        <span class="user">{{ user.username }}</span>
-        <button type="button" class="button ghost" @click="emit('logout')">Wyloguj</button>
       </div>
     </header>
 
@@ -200,10 +205,6 @@ onBeforeUnmount(() => {
   flex-wrap: wrap;
   align-items: center;
   gap: 0.6rem;
-}
-.user {
-  margin-left: 0.4rem;
-  color: var(--muted);
 }
 .top h1 {
   margin: 0;

@@ -245,3 +245,18 @@ export interface OverviewBlock {
   /** User-facing message when all modules behind the block failed. */
   error: string | null
 }
+
+// ---- Dashboard ----
+
+export interface DashboardSection {
+  /** Stable id, also used as the anchor on the Home page. */
+  id: string
+  title: string
+  moduleIds: string[]
+}
+
+/** GET /api/radar/dashboard — layout plus cached results (null = not fetched yet). */
+export interface DashboardLayout {
+  generatedAt: string
+  sections: (DashboardSection & { results: (ModuleResult | null)[] })[]
+}

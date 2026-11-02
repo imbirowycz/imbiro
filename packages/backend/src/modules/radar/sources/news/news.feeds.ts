@@ -1,10 +1,10 @@
 import type { FeedDefinition } from './feed-module.factory'
 
 // RSS/Atom sources. Each entry becomes an independent module (own cache, timeout, status).
-// Verified 2026-11-02: HTTP 200, valid RSS/Atom, final URL (no redirects). See docs/RADAR.md.
+// Verified 2026-11-02 from the production server: HTTP 200, valid RSS/Atom, final URL (no redirects).
+// TVN24 was removed: it answers 403 to the server's (data-centre) IP. See docs/RADAR.md.
 
 const RMF = { name: 'RMF24', homepage: 'https://www.rmf24.pl' }
-const TVN24 = { name: 'TVN24', homepage: 'https://tvn24.pl' }
 const BBC = { name: 'BBC News', homepage: 'https://www.bbc.com/news' }
 
 const githubReleases = (repo: string, prefix: string): FeedDefinition => ({
@@ -21,7 +21,6 @@ const githubReleases = (repo: string, prefix: string): FeedDefinition => ({
 export const NEWS_FEEDS: FeedDefinition[] = [
   // ---- Polska ----
   { id: 'news.rmf.poland', name: 'RMF24 – Polska', category: 'poland', url: 'https://www.rmf24.pl/fakty/polska/feed', source: RMF, description: 'Najnowsze wiadomości z Polski' },
-  { id: 'news.tvn24.latest', name: 'TVN24 – najnowsze', category: 'poland', url: 'https://tvn24.pl/najnowsze.xml', source: TVN24, description: 'Najnowsze wiadomości TVN24' },
 
   // ---- Świat ----
   { id: 'news.rmf.world', name: 'RMF24 – Świat', category: 'world', url: 'https://www.rmf24.pl/fakty/swiat/feed', source: RMF, description: 'Wiadomości ze świata' },
@@ -30,7 +29,6 @@ export const NEWS_FEEDS: FeedDefinition[] = [
 
   // ---- Warszawa ----
   { id: 'news.rmf.warsaw', name: 'RMF24 – Warszawa', category: 'warsaw', url: 'https://www.rmf24.pl/regiony/warszawa/feed', source: RMF, description: 'Wiadomości z Warszawy' },
-  { id: 'news.tvn24.warsaw', name: 'TVN Warszawa', category: 'warsaw', url: 'https://tvn24.pl/tvnwarszawa/najnowsze.xml', source: TVN24, description: 'Najnowsze wiadomości TVN Warszawa' },
 
   // ---- Gospodarka ----
   { id: 'news.rmf.economy', name: 'RMF24 – Ekonomia', category: 'economy', url: 'https://www.rmf24.pl/ekonomia/feed', source: RMF, description: 'Wiadomości gospodarcze' },

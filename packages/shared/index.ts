@@ -24,6 +24,8 @@ export type {
   AlertItem,
   AlertSeverity,
   CurrencyRate,
+  DashboardLayout,
+  DashboardSection,
   GoldPrice,
   ModuleResult,
   ModuleStatus,

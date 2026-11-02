@@ -1,7 +1,8 @@
-import type { ModuleResult, RadarGroupInfo, RadarModuleInfo, RunResult } from '@myorg/shared'
+import type { DashboardLayout, ModuleResult, RadarGroupInfo, RadarModuleInfo, RunResult } from '@myorg/shared'
 import { request } from './client'
 
 export const radarApi = {
+  dashboard: () => request<DashboardLayout>('GET', '/radar/dashboard'),
   listModules: () => request<RadarModuleInfo[]>('GET', '/radar/modules'),
   listGroups: () => request<RadarGroupInfo[]>('GET', '/radar/groups'),
   runModule: (id: string, force = false) =>

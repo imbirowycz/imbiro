@@ -3,8 +3,8 @@ import { onMounted, ref } from 'vue'
 import type { AuthSessionInfo } from '@myorg/shared'
 import { authApi } from './api/auth'
 import { setUnauthorizedHandler } from './api/client'
+import AppShell from './components/layout/AppShell.vue'
 import LoginForm from './components/LoginForm.vue'
-import SchedulerPage from './components/SchedulerPage.vue'
 
 // Brama logowania. To tylko wygoda interfejsu — dostęp do danych pilnuje API (401 bez sesji).
 const session = ref<AuthSessionInfo | null>(null)
@@ -41,7 +41,9 @@ onMounted(async () => {
 <template>
   <p v-if="checking" class="boot muted">Ładowanie…</p>
   <p v-else-if="startError && !session" class="boot load-error">{{ startError }}</p>
-  <SchedulerPage v-else-if="session" :user="session.user" @logout="logout" />
+  <AppShell v-else-if="session" :user="session.user" @logout="logout">
+    <RouterView />
+  </AppShell>
   <LoginForm v-else :notice="loginNotice" @logged-in="session = $event; loginNotice = null" />
 </template>
 
@@ -57,6 +59,8 @@ onMounted(async () => {
   --signal: #f2b544;
   --ok: #5cc8a4;
   --fail: #f0776a;
+  /* Orange warning (IMGW stage 2); yellow = --signal, red = --fail. */
+  --warn: #f29a5c;
   --font-display: 'Barlow Semi Condensed', 'Arial Narrow', system-ui, sans-serif;
   --font-body: 'Barlow', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-code: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;

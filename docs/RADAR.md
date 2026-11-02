@@ -132,6 +132,7 @@ Wszystko pod `/api/radar`, za logowaniem i CSRF.
 
 | Metoda | Ścieżka | Wynik |
 |---|---|---|
+| GET | `/dashboard` | `DashboardLayout` — układ sekcji + wyniki z cache |
 | GET | `/modules` | `RadarModuleInfo[]` |
 | GET | `/groups` | `RadarGroupInfo[]` |
 | POST | `/modules/:id/run` body `{ force? }` | `ModuleResult` |
@@ -139,6 +140,32 @@ Wszystko pod `/api/radar`, za logowaniem i CSRF.
 | POST | `/run` body `{ moduleIds, force? }` (max 20) | `RunResult` |
 
 `force: true` pomija cache, ale nie częściej niż raz na 60 s na moduł (ochrona źródeł).
+
+## Dashboard (Home)
+
+Frontend: `packages/frontend-vue-pwa/src/radar/`. Trasy (`src/router.ts`): `/` — Radar, `/scheduler/:taskId?` — scheduler
+(stare linki `/#/<id>` są przekierowywane).
+
+```
+GET /api/radar/dashboard  → układ sekcji + wyniki z cache (natychmiast, bez pytania źródeł)
+   └─ każda sekcja osobno: POST /api/radar/run { moduleIds }   (serwer i tak odpowiada z cache, gdy świeże)
+   └─ „Odśwież” sekcji / „Odśwież wszystko”: to samo z force: true
+```
+
+- Układ sekcji jest na serwerze: `radar.dashboard.ts` (`SECTIONS`) — sekcja = lista grup/modułów.
+- `useDashboard.ts` — stan per sekcja (`loading`, `error`, `results`); odpowiedzi spóźnione względem nowszego
+  odświeżenia są ignorowane; automatyczne odświeżanie co 10 min, gdy karta jest widoczna.
+- `RadarSection.vue` — ramka sekcji i wszystkie stany (ładowanie, błąd zapytania, wszystkie źródła padły,
+  część padła, brak danych) + atrybucje źródeł.
+- `SectionBody.vue` — renderuje wyniki według `itemKind`; wiadomości dzieli po kategorii (np. IT / Bezpieczeństwo).
+- `SectionTabs.vue` + `HomePage.vue` — przyklejony pasek, płynne przewijanie, aktywna zakładka z `IntersectionObserver`,
+  adres `/#finance` pozwala wrócić do sekcji.
+
+### Jak dodać sekcję
+
+1. Wpis w `SECTIONS` w `radar.dashboard.ts`: `{ id: 'security', title: 'Bezpieczeństwo', modules: [{ group: 'news.security' }] }`.
+2. Jeśli moduły zwracają nowy `itemKind` — komponent w `src/radar/items/` i jedna linia w `SectionBody.vue`.
+Zakładka, przewijanie, stany i odświeżanie działają bez dodatkowego kodu.
 
 ## Jak dodać nowe źródło RSS/Atom
 
@@ -194,9 +221,9 @@ robi konsument (dashboard, przegląd poranny) — `byRelevance` w `parsing/relev
 | `finance.nbp.currencies` | api.nbp.pl, tabela A (2 ostatnie) | 30 min | EUR, USD, CHF, GBP (`radar.config.ts`), zmiana vs poprzednia tabela |
 | `finance.nbp.gold` | api.nbp.pl, ceny złota (2 ostatnie) | 30 min | PLN za 1 g |
 | `news.hackernews` | HN Firebase API | 15 min | top 30, max 5 zapytań naraz, timeout 25 s |
-| `news.rmf.poland`, `news.tvn24.latest` | RSS | 15 min | Polska |
+| `news.rmf.poland` | RSS | 15 min | Polska |
 | `news.rmf.world`, `news.bbc.world`, `news.guardian.world` | RSS | 15 min | Świat |
-| `news.rmf.warsaw`, `news.tvn24.warsaw` | RSS | 15 min | Warszawa |
+| `news.rmf.warsaw` | RSS | 15 min | Warszawa |
 | `news.rmf.economy`, `news.bankier`, `news.bbc.business` | RSS | 15 min | Gospodarka |
 | `news.bbc.technology`, `news.nodejs`, `news.vue.blog`, `news.typescript.blog`, `news.javascriptweekly`, `news.postgresql`, `news.docker.blog` | RSS | 15 min – 3 h | IT; feed Node.js ma całą historię (~1000 wpisów) — bierzemy 30 najnowszych |
 | `news.github.releases.{vue,pinia,vite,express}` | Atom | 60 min | tytuł z prefiksem nazwy projektu |
@@ -215,6 +242,6 @@ Grupy: `finance`, `weather`, `alerts`, `news.poland`, `news.world`, `news.warsaw
 
 Daty bez strefy z IMGW i GIOŚ („2026-11-02 21:00:00”) są przeliczane z `Europe/Warsaw` (`core/time.ts`, z obsługą zmiany czasu).
 
-Odrzucone źródła: PAP (blokada anty-botowa), um.warszawa.pl/rss (404), HF blog (ok. 900 wpisów, mało przydatne),
+Odrzucone źródła: TVN24 (403 dla IP serwera; z domowego IP działa), PAP (blokada anty-botowa), um.warszawa.pl/rss (404), HF blog (ok. 900 wpisów, mało przydatne),
 Kubernetes blog (1,1 MB), Reddit (blokuje serwery, niejasny regulamin), HN „best” (pokrywa się z „top”),
 Warszawa 19115 / api.um.warszawa.pl (wymaga klucza API — decyzja: na razie nie), kanały kategorii ZTM/WTP (403).
