@@ -4,6 +4,7 @@ import { config } from './config'
 import { errorHandler, notFoundHandler } from './http'
 import { createAuthRouter } from './modules/auth/auth.controller'
 import { csrfProtection, loadSession, noStore, originCheck, requireAuth } from './modules/auth/auth.middleware'
+import { createRadarRouter } from './modules/radar/radar.controller'
 import { createSchedulerRouter } from './modules/scheduler/scheduler.controller'
 import type { SchedulerService } from './modules/scheduler/scheduler.service'
 
@@ -33,6 +34,7 @@ export function createApp(scheduler: SchedulerService): express.Express {
   // Wszystko inne pod /api wymaga sesji — także przyszłe moduły i nieistniejące ścieżki (401, nie 404).
   app.use('/api', requireAuth, csrfProtection)
   app.use('/api/scheduler', createSchedulerRouter(scheduler))
+  app.use('/api/radar', createRadarRouter())
 
   app.use(notFoundHandler)
   app.use(errorHandler)

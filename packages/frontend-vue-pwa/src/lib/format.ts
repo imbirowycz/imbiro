@@ -6,6 +6,7 @@ export const ACTION_LABELS: Record<string, string> = {
   'email.send': 'Email',
   'telegram.send': 'Telegram',
   'report.generate': 'Raport',
+  'radar.deliver': 'Radar',
 }
 
 export const STATUS_LABELS: Record<ExecutionStatus, string> = {

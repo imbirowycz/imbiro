@@ -20,6 +20,11 @@ function resultPreview(execution: TaskExecution): string {
   if (totals) return `raport: ${totals.succeeded} udanych, ${totals.failed} z błędem, ${totals.inProgress} w toku`
   if (Array.isArray(result.accepted)) return `wysłano do ${(result.accepted as string[]).join(', ')}`
   if (result.messageId !== undefined) return `wysłano, wiadomość ${String(result.messageId)}`
+  const radar = result as { runStatus?: string; modules?: { status: string }[]; delivered?: { channel: string } }
+  if (radar.runStatus && radar.modules) {
+    const ok = radar.modules.filter((m) => m.status !== 'error').length
+    return `radar: ${ok}/${radar.modules.length} źródeł, wysłano (${radar.delivered?.channel ?? '—'})`
+  }
   return JSON.stringify(result)
 }
 </script>

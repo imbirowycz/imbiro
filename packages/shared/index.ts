@@ -16,3 +16,18 @@ export type {
   UpdateScheduledTaskDTO,
 } from './dtos/scheduler.dto'
 export type { AdminUser, AuthSessionInfo, LoginDTO } from './models/auth.model'
+export type {
+  CurrencyRate,
+  GoldPrice,
+  ModuleResult,
+  ModuleStatus,
+  RadarError,
+  RadarErrorCode,
+  RadarGroupId,
+  RadarGroupInfo,
+  RadarItemKind,
+  RadarModuleInfo,
+  RadarSourceInfo,
+  RunResult,
+  RunTarget,
+} from './models/radar.model'

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import type { ApiErrorDetail, CreateScheduledTaskDTO, ScheduledTask, ScheduleType } from '@myorg/shared'
+import type { ApiErrorDetail, CreateScheduledTaskDTO, RadarGroupInfo, RadarModuleInfo, ScheduledTask, ScheduleType } from '@myorg/shared'
+import { radarApi } from '../api/radar'
 import { ApiRequestError, schedulerApi, type ActionInfo } from '../api/scheduler'
 import { actionLabel } from '../lib/format'
 
@@ -8,6 +9,7 @@ const props = defineProps<{ task: ScheduledTask | null; actions: ActionInfo[] }>
 const emit = defineEmits<{ saved: [task: ScheduledTask]; close: [] }>()
 
 type IntervalUnit = 'minutes' | 'hours' | 'days'
+type RadarTargetKind = 'group' | 'module' | 'modules'
 const UNIT_SECONDS: Record<IntervalUnit, number> = { minutes: 60, hours: 3600, days: 86_400 }
 const browserTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
 const timeZones = Intl.supportedValuesOf('timeZone')
@@ -23,6 +25,15 @@ interface FormState {
   telegramChatId: string
   telegramText: string
   reportPeriodHours: number
+  radarTargetKind: RadarTargetKind
+  radarGroupId: string
+  radarModuleId: string
+  radarModuleIds: string[]
+  radarChannel: 'telegram' | 'email'
+  radarChatId: string
+  radarEmailTo: string
+  radarEmailSubject: string
+  radarMaxItems: number
   rawConfig: string
   scheduleType: ScheduleType
   cronExpression: string
@@ -40,10 +51,36 @@ const errors = ref<ApiErrorDetail[]>([])
 const isEdit = computed(() => props.task !== null)
 
 const form = ref<FormState>(fromTask(props.task))
+
+// Radar catalog for the radar.deliver action (modules and groups available in the backend).
+const radarModules = ref<RadarModuleInfo[]>([])
+const radarGroups = ref<RadarGroupInfo[]>([])
+const radarCatalogError = ref<string | null>(null)
+const radarModulesByGroup = computed(() => {
+  const groups = new Map<string, RadarModuleInfo[]>()
+  for (const module of radarModules.value) groups.set(module.group, [...(groups.get(module.group) ?? []), module])
+  return [...groups.entries()]
+})
+
+async function loadRadarCatalog() {
+  try {
+    const [modules, groups] = await Promise.all([radarApi.listModules(), radarApi.listGroups()])
+    radarModules.value = modules
+    radarGroups.value = groups
+    // Sensible defaults for a new radar task.
+    form.value.radarGroupId ||= groups[0]?.id ?? ''
+    form.value.radarModuleId ||= modules[0]?.id ?? ''
+  } catch (err) {
+    radarCatalogError.value = (err as Error).message
+  }
+}
 // Stan początkowy — edycja wysyła tylko pola, które się zmieniły.
 const initial = props.task ? buildDto(fromTask(props.task)) : null
 
-onMounted(() => dialog.value?.showModal())
+onMounted(() => {
+  dialog.value?.showModal()
+  void loadRadarCatalog()
+})
 
 function toLocalInput(iso: string | null): string {
   if (!iso) return ''
@@ -54,6 +91,8 @@ function toLocalInput(iso: string | null): string {
 
 function fromTask(task: ScheduledTask | null): FormState {
   const action = (task?.actionConfig ?? {}) as Record<string, unknown>
+  const radarTarget = (action.target ?? {}) as { kind?: RadarTargetKind; id?: string; ids?: string[] }
+  const radarChannel = (action.channel ?? {}) as { type?: 'telegram' | 'email'; chatId?: unknown; to?: unknown; subject?: string }
   const schedule = (task?.scheduleConfig ?? {}) as { expression?: string; everySeconds?: number }
   const every = schedule.everySeconds ?? 1800
   const unit: IntervalUnit = every % 86_400 === 0 ? 'days' : every % 3600 === 0 ? 'hours' : 'minutes'
@@ -68,6 +107,15 @@ function fromTask(task: ScheduledTask | null): FormState {
     telegramChatId: action.chatId === undefined ? '' : String(action.chatId),
     telegramText: String(action.text ?? ''),
     reportPeriodHours: Number(action.periodHours ?? 24),
+    radarTargetKind: radarTarget.kind ?? 'group',
+    radarGroupId: radarTarget.kind === 'group' ? (radarTarget.id ?? '') : '',
+    radarModuleId: radarTarget.kind === 'module' ? (radarTarget.id ?? '') : '',
+    radarModuleIds: radarTarget.kind === 'modules' ? [...(radarTarget.ids ?? [])] : [],
+    radarChannel: radarChannel.type ?? 'telegram',
+    radarChatId: radarChannel.chatId === undefined ? '' : String(radarChannel.chatId),
+    radarEmailTo: Array.isArray(radarChannel.to) ? radarChannel.to.join(', ') : String(radarChannel.to ?? ''),
+    radarEmailSubject: radarChannel.subject ?? '',
+    radarMaxItems: Number(action.maxItemsPerModule ?? 5),
     rawConfig: JSON.stringify(task?.actionConfig ?? {}, null, 2),
     scheduleType: task?.scheduleType ?? 'interval',
     cronExpression: schedule.expression ?? '0 8 * * *',
@@ -92,6 +140,24 @@ function buildActionConfig(state: FormState): Record<string, unknown> {
       return { chatId: state.telegramChatId.trim(), text: state.telegramText }
     case 'report.generate':
       return { periodHours: Number(state.reportPeriodHours) }
+    case 'radar.deliver':
+      return {
+        target:
+          state.radarTargetKind === 'group'
+            ? { kind: 'group', id: state.radarGroupId }
+            : state.radarTargetKind === 'module'
+              ? { kind: 'module', id: state.radarModuleId }
+              : { kind: 'modules', ids: state.radarModuleIds },
+        channel:
+          state.radarChannel === 'telegram'
+            ? { type: 'telegram', chatId: state.radarChatId.trim() }
+            : {
+                type: 'email',
+                to: state.radarEmailTo.split(',').map((s) => s.trim()).filter(Boolean),
+                subject: state.radarEmailSubject,
+              },
+        maxItemsPerModule: Number(state.radarMaxItems),
+      }
     default:
       try {
         return JSON.parse(state.rawConfig || '{}')
@@ -178,7 +244,12 @@ const scheduleTypes: { value: ScheduleType; label: string }[] = [
   { value: 'interval', label: 'Co pewien czas' },
   { value: 'cron', label: 'Cron' },
 ]
-const knownActionForms = ['email.send', 'telegram.send', 'report.generate']
+const knownActionForms = ['email.send', 'telegram.send', 'report.generate', 'radar.deliver']
+const radarTargetKinds: { value: RadarTargetKind; label: string }[] = [
+  { value: 'group', label: 'Grupa' },
+  { value: 'module', label: 'Moduł' },
+  { value: 'modules', label: 'Wybrane moduły' },
+]
 </script>
 
 <template>
@@ -253,6 +324,78 @@ const knownActionForms = ['email.send', 'telegram.send', 'report.generate']
           <input v-model.number="form.reportPeriodHours" type="number" min="1" max="720" :aria-invalid="!!fieldError('actionConfig.periodHours')" />
           <small v-if="fieldError('actionConfig.periodHours')" class="error">{{ fieldError('actionConfig.periodHours') }}</small>
         </label>
+
+        <template v-else-if="form.actionType === 'radar.deliver'">
+          <p v-if="radarCatalogError" class="form-error">Nie udało się pobrać listy modułów: {{ radarCatalogError }}</p>
+
+          <div class="segmented" role="radiogroup" aria-label="Co uruchomić">
+            <label v-for="k in radarTargetKinds" :key="k.value" :class="{ active: form.radarTargetKind === k.value }">
+              <input v-model="form.radarTargetKind" type="radio" name="radarTargetKind" :value="k.value" />
+              {{ k.label }}
+            </label>
+          </div>
+
+          <label v-if="form.radarTargetKind === 'group'" class="field">
+            <span>Grupa modułów</span>
+            <select v-model="form.radarGroupId" :aria-invalid="!!fieldError('actionConfig.target')">
+              <option v-for="g in radarGroups" :key="g.id" :value="g.id">{{ g.name }} ({{ g.moduleIds.length }})</option>
+            </select>
+            <small v-if="fieldError('actionConfig.target')" class="error">{{ fieldError('actionConfig.target') }}</small>
+          </label>
+
+          <label v-else-if="form.radarTargetKind === 'module'" class="field">
+            <span>Moduł</span>
+            <select v-model="form.radarModuleId" :aria-invalid="!!fieldError('actionConfig.target')">
+              <optgroup v-for="[group, modules] in radarModulesByGroup" :key="group" :label="group">
+                <option v-for="m in modules" :key="m.id" :value="m.id">{{ m.name }}</option>
+              </optgroup>
+            </select>
+            <small v-if="fieldError('actionConfig.target')" class="error">{{ fieldError('actionConfig.target') }}</small>
+          </label>
+
+          <fieldset v-else class="field checklist" :aria-invalid="!!fieldError('actionConfig.target')">
+            <span>Moduły</span>
+            <label v-for="m in radarModules" :key="m.id" class="check">
+              <input v-model="form.radarModuleIds" type="checkbox" :value="m.id" />
+              {{ m.name }} <em class="muted">{{ m.id }}</em>
+            </label>
+            <small v-if="fieldError('actionConfig.target')" class="error">{{ fieldError('actionConfig.target') }}</small>
+          </fieldset>
+
+          <div class="pair">
+            <label class="field">
+              <span>Wyślij przez</span>
+              <select v-model="form.radarChannel">
+                <option value="telegram">Telegram</option>
+                <option value="email">E-mail</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>Pozycji na moduł</span>
+              <input v-model.number="form.radarMaxItems" type="number" min="1" max="20" :aria-invalid="!!fieldError('actionConfig.maxItemsPerModule')" />
+              <small v-if="fieldError('actionConfig.maxItemsPerModule')" class="error">{{ fieldError('actionConfig.maxItemsPerModule') }}</small>
+            </label>
+          </div>
+
+          <label v-if="form.radarChannel === 'telegram'" class="field">
+            <span>Czat <em>id liczbowe albo @kanal</em></span>
+            <input v-model="form.radarChatId" type="text" autocomplete="off" :aria-invalid="!!fieldError('actionConfig.channel')" />
+            <small v-if="fieldError('actionConfig.channel')" class="error">{{ fieldError('actionConfig.channel') }}</small>
+          </label>
+          <template v-else>
+            <label class="field">
+              <span>Do <em>adresy oddzielone przecinkami</em></span>
+              <input v-model="form.radarEmailTo" type="text" inputmode="email" autocomplete="off" :aria-invalid="!!fieldError('actionConfig.channel.to')" />
+              <small v-if="fieldError('actionConfig.channel.to')" class="error">{{ fieldError('actionConfig.channel.to') }}</small>
+            </label>
+            <label class="field">
+              <span>Temat</span>
+              <input v-model="form.radarEmailSubject" type="text" :aria-invalid="!!fieldError('actionConfig.channel.subject')" />
+              <small v-if="fieldError('actionConfig.channel.subject')" class="error">{{ fieldError('actionConfig.channel.subject') }}</small>
+            </label>
+          </template>
+          <small class="hint">Tytuł wiadomości to nazwa zadania. Dane są pobierane w chwili wykonania i nie są zapisywane.</small>
+        </template>
 
         <label v-if="!knownActionForms.includes(form.actionType)" class="field">
           <span>Konfiguracja <em>JSON</em></span>
@@ -452,6 +595,13 @@ legend {
 }
 .code {
   font-family: var(--font-code);
+}
+.checklist {
+  gap: 0.45rem;
+}
+.checklist em {
+  font-style: normal;
+  font-size: 0.8rem;
 }
 .hint {
   color: var(--muted);
