@@ -79,7 +79,8 @@ function memo<T>(ttlMs: number) {
 export interface GiosOptions {
   city: string
   timeZone: string
-  valueStationIds: readonly number[]
+  /** Stations to show, with concentrations. Empty = every station in the city, index only. */
+  stationIds: readonly number[]
 }
 
 export function createGiosModule(options: GiosOptions) {
@@ -98,9 +99,12 @@ export function createGiosModule(options: GiosOptions) {
   return defineModule<AirQualityStation>({
     id: 'alerts.gios',
     name: `Jakość powietrza – ${options.city}`,
-    group: 'alerts',
+    // Shown next to the weather; the id keeps its historical "alerts." prefix so scheduler tasks keep working.
+    group: 'weather',
     category: 'air',
-    description: `Indeks jakości powietrza GIOŚ dla stacji w mieście ${options.city} (PM10, PM2.5, NO2)`,
+    description: options.stationIds.length
+      ? `Indeks jakości powietrza GIOŚ i stężenia PM10, PM2.5, NO2 dla wybranych stacji (${options.city})`
+      : `Indeks jakości powietrza GIOŚ dla stacji w mieście ${options.city}`,
     source: { name: 'GIOŚ', homepage: 'https://powietrze.gios.gov.pl', attribution: 'Dane: Główny Inspektorat Ochrony Środowiska' },
     itemKind: 'air-quality',
     kind: 'collector',
@@ -117,14 +121,15 @@ export function createGiosModule(options: GiosOptions) {
           .filter((s) => s['Nazwa miasta'] === options.city)
           .map((s) => ({ id: s['Identyfikator stacji'], name: s['Nazwa stacji'] }))
       })
-      if (stations.length === 0) throw new RadarSourceError('INVALID_RESPONSE', `GIOŚ nie zwrócił stacji dla miasta ${options.city}`)
+      const selected = options.stationIds.length ? stations.filter((s) => options.stationIds.includes(s.id)) : stations
+      if (selected.length === 0) throw new RadarSourceError('INVALID_RESPONSE', `GIOŚ nie zwrócił wybranych stacji (${options.city})`)
 
-      const indexes = await mapWithLimit(stations, REQUEST_CONCURRENCY, (station) =>
+      const indexes = await mapWithLimit(selected, REQUEST_CONCURRENCY, (station) =>
         http.getJson(`${API}/aqindex/getIndex/${station.id}`, indexSchema, { signal, retries: 1, accept: ACCEPT })
       )
 
       // Concentrations only for selected stations (sensor ids memoized for a day).
-      const valueStations = stations.filter((s) => options.valueStationIds.includes(s.id))
+      const valueStations = options.stationIds.length ? selected : []
       const values = new Map<string, { value: number; measuredAt: string | null }>()
       await mapWithLimit(valueStations, REQUEST_CONCURRENCY, async (station) => {
         const sensors = await sensorsMemo(String(station.id), async () => {
@@ -142,7 +147,7 @@ export function createGiosModule(options: GiosOptions) {
       const warnings: string[] = []
       const data: AirQualityStation[] = []
       indexes.forEach((outcome, i) => {
-        const station = stations[i]
+        const station = selected[i]
         if (outcome.status === 'rejected') {
           warnings.push(`Brak indeksu dla stacji ${station.name}`)
           return

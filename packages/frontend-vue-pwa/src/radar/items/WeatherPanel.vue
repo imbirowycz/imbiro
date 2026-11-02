@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import type { WeatherDay, WeatherNow } from '@myorg/shared'
+import type { AirPollutantCode, AirQualityStation, WeatherDay, WeatherNow } from '@myorg/shared'
 import { dayName, degrees, hour, number } from '../format'
 
-defineProps<{ now: WeatherNow | null; days: WeatherDay[] }>()
+defineProps<{ now: WeatherNow | null; days: WeatherDay[]; air: AirQualityStation[] }>()
+
+const POLLUTANT_LABEL: Partial<Record<AirPollutantCode, string>> = { PM10: 'PM10', 'PM2.5': 'PM2,5', NO2: 'NO₂' }
 </script>
 
 <template>
@@ -19,6 +21,18 @@ defineProps<{ now: WeatherNow | null; days: WeatherDay[] }>()
         </dl>
       </div>
     </div>
+
+    <section v-for="s in air" :key="s.stationId" class="air" :class="s.severity" aria-label="Jakość powietrza">
+      <h3>Jakość powietrza</h3>
+      <p class="air-index"><span class="marker" aria-hidden="true" />{{ s.indexCategory ?? 'brak indeksu' }}</p>
+      <p class="air-where">{{ s.name }}<template v-if="s.measuredAt">, pomiar {{ hour(s.measuredAt) }}</template></p>
+      <dl v-if="s.pollutants.some((p) => p.value !== null)" class="air-values">
+        <div v-for="p in s.pollutants.filter((p) => p.value !== null && POLLUTANT_LABEL[p.code])" :key="p.code">
+          <dt>{{ POLLUTANT_LABEL[p.code] }}</dt>
+          <dd>{{ number(p.value!, 0) }} <span>µg/m³</span></dd>
+        </div>
+      </dl>
+    </section>
 
     <div v-if="now?.hours.length" class="hours-wrap">
       <h3>Najbliższe godziny</h3>
@@ -104,6 +118,71 @@ h3 {
 }
 .hours-wrap {
   grid-column: 1 / -1;
+}
+.air {
+  padding-top: 1rem;
+}
+.air h3 {
+  margin: 0 0 0.35rem;
+}
+.air-index {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 600;
+  line-height: 1.1;
+}
+/* Colour follows the GIOŚ index severity: good = green, then yellow / orange / red. */
+.marker {
+  width: 0.8rem;
+  height: 0.8rem;
+  border-radius: 50%;
+  background: var(--ok);
+}
+.air.low .marker {
+  background: var(--signal);
+}
+.air.medium .marker {
+  background: var(--warn);
+}
+.air.high .marker {
+  background: var(--fail);
+}
+.air-where {
+  margin: 0.3rem 0 0.6rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+.air-values {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.6rem;
+  margin: 0;
+}
+.air-values div {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+}
+.air-values dt {
+  min-width: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.air-values dd {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.air-values dd span {
+  color: var(--muted);
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 400;
 }
 .hours {
   display: flex;

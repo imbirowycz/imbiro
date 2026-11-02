@@ -35,7 +35,8 @@ const moduleName = (id: string) => props.modules.get(id)?.name ?? id
         <p class="meta">
           <span v-if="sources">{{ sources }}</span>
           <span v-if="section.loading" class="status">pobieranie…</span>
-          <span v-else-if="fetchedAt" class="status">pobrano {{ relativeTime(fetchedAt, now) }}</span>
+          <!-- The page clock ticks every 30 s; never show a fetch as "in the future". -->
+          <span v-else-if="fetchedAt" class="status">pobrano {{ relativeTime(fetchedAt, Math.max(now, Date.parse(fetchedAt))) }}</span>
         </p>
       </div>
       <button

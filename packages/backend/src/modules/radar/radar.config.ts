@@ -26,8 +26,8 @@ export const radarConfig = {
   alerts: {
     /** IMGW hydro warnings are per catchment; keep only those mentioning these rivers (prefix match). */
     hydroAreaKeywords: ['wisł*'],
-    /** GIOŚ: stations whose hourly PM10/PM2.5/NO2 values are fetched (others: index only — fewer requests). */
-    giosValueStationIds: [530, 552],
+    /** GIOŚ stations shown (with PM10/PM2.5/NO2 values). 20487 = Warszawa, ul. Grochowska. Empty = all in the city (index only). */
+    giosStationIds: [20487],
     /** ZTM/WTP news that look like disruptions or route changes. */
     transportKeywords: [
       'utrudnie*', 'objazd*', 'zmian* w kursowaniu', 'zmian* tras*', 'remont*', 'przebudow*', 'zamknię*',

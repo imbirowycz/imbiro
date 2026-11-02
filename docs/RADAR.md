@@ -282,11 +282,11 @@ robi konsument (dashboard, przegląd poranny) — `byRelevance` w `parsing/relev
 | `weather.current` | Open-Meteo | 15 min | warunki teraz + prognoza godzinowa (12 h) |
 | `weather.forecast` | Open-Meteo | 60 min | prognoza dzienna (7 dni) |
 | `alerts.imgw` | danepubliczne.imgw.pl (meteo + hydro) | 10 min | meteo: filtr TERYT powiatu (1465); hydro: województwo + zlewnia (`wisł*`); susza (stopień -1) = `info`. Wymagana atrybucja IMGW-PIB |
-| `alerts.gios` | api.gios.gov.pl v1 | 30 min | indeks dla wszystkich stacji w Warszawie (10), stężenia PM10/PM2.5/NO2 dla `giosValueStationIds`; lista stacji i czujników w pamięci na dobę. API wymaga `Accept: application/ld+json` |
+| `alerts.gios` | api.gios.gov.pl v1 | 30 min | w grupie `weather` (sekcja Pogoda): stacje z `giosStationIds` — domyślnie tylko ul. Grochowska (20487) — z indeksem i stężeniami PM10/PM2.5/NO2; pusta lista = wszystkie stacje w mieście (sam indeks). Lista stacji i czujników w pamięci na dobę. API wymaga `Accept: application/ld+json`. Id z prefiksem `alerts.` zostało ze względu na zgodność zadań schedulera |
 | `alerts.warsaw` | RSS ZTM + WTP | 30 min | filtr słów (`transportKeywords`), ostatnie 14 dni |
 | `morning.overview` | moduł zbiorczy | 5 min | pogoda, alerty (IMGW od żółtego, powietrze, 3 komunikaty), top 3 Polska/Świat/IT po istotności, kursy, złoto |
 
-Grupy: `finance`, `weather`, `alerts`, `news.poland`, `news.world`, `news.warsaw`, `news.economy`,
+Grupy: `finance`, `weather` (pogoda + jakość powietrza), `alerts` (IMGW + komunikacja), `news.poland`, `news.world`, `news.warsaw`, `news.economy`,
 `news.security`, `news` (wszystkie wiadomości).
 
 **Tylko źródła polskojęzyczne** (decyzja z 2026-11-02): usunięto BBC, The Guardian, Hacker News, The Hacker News,

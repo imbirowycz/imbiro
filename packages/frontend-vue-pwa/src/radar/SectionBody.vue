@@ -48,9 +48,10 @@ const showNewsHeadings = computed(() => newsGroups.value.length > 1 || rates.val
 </script>
 
 <template>
-  <WeatherPanel v-if="weatherNow || weatherDays.length" :now="weatherNow" :days="weatherDays" />
+  <!-- Air quality is shown inside the weather panel (one selected station). -->
+  <WeatherPanel v-if="weatherNow || weatherDays.length || air.length" :now="weatherNow" :days="weatherDays" :air="air" />
   <RatesBoard v-if="rates.length || gold.length" :rates="rates" :gold="gold" />
-  <AlertList v-if="alerts.length || air.length" :alerts="alerts" :air="air" heading />
+  <AlertList v-if="alerts.length" :alerts="alerts" :air="[]" heading />
   <div v-if="newsGroups.length" class="news-groups" :class="{ split: newsGroups.length > 1 }">
     <NewsList
       v-for="[label, items] in newsGroups"

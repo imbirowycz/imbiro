@@ -61,11 +61,12 @@ export function createRadarRegistry(): ModuleRegistry {
   registry
     .register(createWeatherNowModule(location, weather.hours))
     .register(createWeatherForecastModule(location, weather.days))
+    .register(createGiosModule({ city: location.giosCity, timeZone: location.timeZone, stationIds: alerts.giosStationIds }))
     .defineGroup({
       id: 'weather',
       name: 'Pogoda',
-      description: `Pogoda teraz i prognoza – ${location.name}`,
-      moduleIds: ['weather.current', 'weather.forecast'],
+      description: `Pogoda teraz, prognoza i jakość powietrza – ${location.name}`,
+      moduleIds: ['weather.current', 'weather.forecast', 'alerts.gios'],
     })
     .register(
       createImgwModule({
@@ -76,13 +77,12 @@ export function createRadarRegistry(): ModuleRegistry {
         hydroAreaKeywords: alerts.hydroAreaKeywords,
       })
     )
-    .register(createGiosModule({ city: location.giosCity, timeZone: location.timeZone, valueStationIds: alerts.giosValueStationIds }))
     .register(createWarsawTransportModule({ keywords: alerts.transportKeywords, maxAgeDays: alerts.transportMaxAgeDays }))
     .defineGroup({
       id: 'alerts',
       name: 'Alerty',
-      description: 'Ostrzeżenia IMGW, jakość powietrza GIOŚ, utrudnienia w komunikacji',
-      moduleIds: ['alerts.imgw', 'alerts.gios', 'alerts.warsaw'],
+      description: 'Ostrzeżenia IMGW i utrudnienia w komunikacji',
+      moduleIds: ['alerts.imgw', 'alerts.warsaw'],
     })
 
   const newsIn = (groupId: string) => registry.getGroup(groupId).moduleIds
