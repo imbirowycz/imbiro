@@ -97,8 +97,9 @@ procesu — zobaczysz je od razu, a nie o 7:00 rano.
 Moduły podrzędne przechodzą przez ten sam runner (cache, limity, timeouty) — agregator sam niczego
 nie pobiera. Zagnieżdżenie jest ograniczone (`maxDepth`).
 
-Wzorzec: `composites/morning-overview.module.ts`. Zwraca listę `OverviewBlock` — każdy blok ma
-`itemKind` (np. `news`, `alert`), więc dashboard i raport renderują go tymi samymi rendererami co zwykłe moduły.
+Wzorzec: `composites/morning-overview.module.ts` (używany w raportach schedulera; na dashboardzie nie ma
+osobnej sekcji, bo powielałaby pozostałe). Zwraca listę `OverviewBlock` — każdy blok ma `itemKind`
+(np. `news`, `alert`), więc raport renderuje go tymi samymi rendererami co zwykłe moduły.
 Status bloku wynika ze statusów modułów pod spodem; awaria jednego źródła daje blok `partial`/`error`,
 a reszta przeglądu działa dalej.
 

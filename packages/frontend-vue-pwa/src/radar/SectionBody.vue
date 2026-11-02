@@ -7,14 +7,12 @@ import type {
   GoldPrice,
   ModuleResult,
   NewsItem,
-  OverviewBlock,
   RadarItemKind,
   WeatherDay,
   WeatherNow,
 } from '@myorg/shared'
 import AlertList from './items/AlertList.vue'
 import NewsList from './items/NewsList.vue'
-import OverviewBoard from './items/OverviewBoard.vue'
 import RatesBoard from './items/RatesBoard.vue'
 import WeatherPanel from './items/WeatherPanel.vue'
 
@@ -26,7 +24,6 @@ function itemsOf<T>(kind: RadarItemKind): T[] {
   return props.results.filter((r) => r.itemKind === kind).flatMap((r) => r.data as T[])
 }
 
-const overview = computed(() => itemsOf<OverviewBlock>('overview-block'))
 const weatherNow = computed(() => itemsOf<WeatherNow>('weather-now')[0] ?? null)
 const weatherDays = computed(() => itemsOf<WeatherDay>('weather-day'))
 const rates = computed(() => itemsOf<CurrencyRate>('currency-rate'))
@@ -51,7 +48,6 @@ const showNewsHeadings = computed(() => newsGroups.value.length > 1 || rates.val
 </script>
 
 <template>
-  <OverviewBoard v-if="overview.length" :blocks="overview" />
   <WeatherPanel v-if="weatherNow || weatherDays.length" :now="weatherNow" :days="weatherDays" />
   <RatesBoard v-if="rates.length || gold.length" :rates="rates" :gold="gold" />
   <AlertList v-if="alerts.length || air.length" :alerts="alerts" :air="air" heading />

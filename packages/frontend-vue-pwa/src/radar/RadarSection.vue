@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { ModuleResult, OverviewBlock, RadarModuleInfo } from '@myorg/shared'
+import type { ModuleResult, RadarModuleInfo } from '@myorg/shared'
 import { relativeTime } from '../lib/format'
 import type { SectionState } from './useDashboard'
 
@@ -14,13 +14,9 @@ const loaded = computed(() => props.section.results.filter((r): r is ModuleResul
 const ok = computed(() => loaded.value.filter((r) => r.status !== 'error'))
 const failed = computed(() => loaded.value.filter((r) => r.status === 'error'))
 const hasData = computed(() => ok.value.some((r) => r.data.length > 0))
-/** Real sources — for a composite (overview) the ones behind its blocks. Many sources → just the count. */
+/** Source names; many sources → just the count. */
 const sources = computed(() => {
-  const names = new Set(
-    loaded.value.flatMap((r) =>
-      r.itemKind === 'overview-block' ? (r.data as OverviewBlock[]).flatMap((b) => b.sources) : [r.source.name]
-    )
-  )
+  const names = new Set(loaded.value.map((r) => r.source.name))
   return names.size > 4 ? `${names.size} źródeł` : [...names].join(', ')
 })
 const attributions = computed(() => [...new Set(ok.value.map((r) => r.source.attribution).filter(Boolean))])

@@ -13,7 +13,6 @@ interface SectionDefinition {
 }
 
 const SECTIONS: SectionDefinition[] = [
-  { id: 'overview', title: 'Overview', modules: [{ module: 'morning.overview' }] },
   { id: 'weather', title: 'Pogoda', modules: [{ group: 'weather' }] },
   { id: 'poland', title: 'Polska', modules: [{ group: 'news.poland' }] },
   { id: 'world', title: 'Świat', modules: [{ group: 'news.world' }] },
