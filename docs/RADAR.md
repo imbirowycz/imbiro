@@ -94,7 +94,18 @@ procesu — zobaczysz je od razu, a nie o 7:00 rano.
 ## Moduł zbiorczy (agregator)
 
 `kind: 'composite'`, `dependsOn: [...]` z listą modułów, a w `execute` używasz `ctx.run(target)`.
-Moduły podrzędne przechodzą przez ten sam runner (cache, limity, timeouty). Zagnieżdżenie jest ograniczone (`maxDepth`).
+Moduły podrzędne przechodzą przez ten sam runner (cache, limity, timeouty) — agregator sam niczego
+nie pobiera. Zagnieżdżenie jest ograniczone (`maxDepth`).
+
+Wzorzec: `composites/morning-overview.module.ts`. Zwraca listę `OverviewBlock` — każdy blok ma
+`itemKind` (np. `news`, `alert`), więc dashboard i raport renderują go tymi samymi rendererami co zwykłe moduły.
+Status bloku wynika ze statusów modułów pod spodem; awaria jednego źródła daje blok `partial`/`error`,
+a reszta przeglądu działa dalej.
+
+Nowy agregator:
+1. plik w `composites/` z `defineModule({ kind: 'composite', dependsOn, itemKind: 'overview-block', ... })`;
+2. w `execute`: `const run = await ctx.run({ kind: 'modules', ids })`, wybór i sortowanie elementów, `block(...)`;
+3. rejestracja w `radar.catalog.ts` **po** modułach, od których zależy.
 
 ## Podpinanie do schedulera
 
@@ -192,8 +203,18 @@ robi konsument (dashboard, przegląd poranny) — `byRelevance` w `parsing/relev
 | `news.simonwillison` | Atom | 60 min | AI |
 | `news.cert.pl`, `news.sekurak`, `news.niebezpiecznik`, `news.thehackernews` | RSS/Atom | 60 min | Bezpieczeństwo |
 
-Grupy: `finance`, `news.poland`, `news.world`, `news.warsaw`, `news.economy`, `news.it` (IT + AI),
+| `weather.current` | Open-Meteo | 15 min | warunki teraz + prognoza godzinowa (12 h) |
+| `weather.forecast` | Open-Meteo | 60 min | prognoza dzienna (7 dni) |
+| `alerts.imgw` | danepubliczne.imgw.pl (meteo + hydro) | 10 min | meteo: filtr TERYT powiatu (1465); hydro: województwo + zlewnia (`wisł*`); susza (stopień -1) = `info`. Wymagana atrybucja IMGW-PIB |
+| `alerts.gios` | api.gios.gov.pl v1 | 30 min | indeks dla wszystkich stacji w Warszawie (10), stężenia PM10/PM2.5/NO2 dla `giosValueStationIds`; lista stacji i czujników w pamięci na dobę. API wymaga `Accept: application/ld+json` |
+| `alerts.warsaw` | RSS ZTM + WTP | 30 min | filtr słów (`transportKeywords`), ostatnie 14 dni |
+| `morning.overview` | moduł zbiorczy | 5 min | pogoda, alerty (IMGW od żółtego, powietrze, 3 komunikaty), top 3 Polska/Świat/IT po istotności, kursy, złoto |
+
+Grupy: `finance`, `weather`, `alerts`, `news.poland`, `news.world`, `news.warsaw`, `news.economy`, `news.it` (IT + AI),
 `news.security`, `news` (wszystkie wiadomości).
 
+Daty bez strefy z IMGW i GIOŚ („2026-11-02 21:00:00”) są przeliczane z `Europe/Warsaw` (`core/time.ts`, z obsługą zmiany czasu).
+
 Odrzucone źródła: PAP (blokada anty-botowa), um.warszawa.pl/rss (404), HF blog (ok. 900 wpisów, mało przydatne),
-Kubernetes blog (1,1 MB), Reddit (blokuje serwery, niejasny regulamin), HN „best” (pokrywa się z „top”).
+Kubernetes blog (1,1 MB), Reddit (blokuje serwery, niejasny regulamin), HN „best” (pokrywa się z „top”),
+Warszawa 19115 / api.um.warszawa.pl (wymaga klucza API — decyzja: na razie nie), kanały kategorii ZTM/WTP (403).

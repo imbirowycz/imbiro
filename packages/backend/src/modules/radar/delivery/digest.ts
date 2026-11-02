@@ -1,5 +1,19 @@
-import type { CurrencyRate, GoldPrice, ModuleResult, NewsItem, RadarItemKind, RunResult } from '@myorg/shared'
+import type {
+  AirQualityStation,
+  AlertItem,
+  AlertSeverity,
+  CurrencyRate,
+  GoldPrice,
+  ModuleResult,
+  NewsItem,
+  OverviewBlock,
+  RadarItemKind,
+  RunResult,
+  WeatherDay,
+  WeatherNow,
+} from '@myorg/shared'
 import type { ModuleRegistry } from '../core/module.registry'
+import { radarConfig } from '../radar.config'
 
 // Turns a RunResult into a channel-neutral digest, then renders it for Telegram (HTML) or e-mail.
 // All upstream text is untrusted: it is always escaped, never inserted as markup.
@@ -27,14 +41,29 @@ export interface Digest {
 }
 
 const locale = 'pl-PL'
+const timeZone = radarConfig.location.timeZone
 const pln = (value: number, digits: number) =>
   value.toLocaleString(locale, { minimumFractionDigits: digits, maximumFractionDigits: digits })
+const deg = (value: number) => `${pln(value, Number.isInteger(value) ? 0 : 1)}°C`
 
 function signed(change: number | null, digits: number): string {
   if (change === null) return ''
   if (change === 0) return ' (bez zmian)'
   return ` ${change > 0 ? '▲ +' : '▼ −'}${pln(Math.abs(change), digits)}`
 }
+
+/** "2026-11-02" → "2.11.2026"; ISO date-time → "2.11, 12:45" in the configured time zone. */
+export function formatWhen(value: string): string {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [y, m, d] = value.split('-').map(Number)
+    return `${d}.${m}.${y}`
+  }
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return date.toLocaleString(locale, { timeZone, day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' })
+}
+
+const SEVERITY_ICON: Record<AlertSeverity, string> = { high: '🔴', medium: '🟠', low: '🟡', info: 'ℹ️' }
 
 /** One text line per item, by item kind. Unknown kinds fall back to a count only. */
 const lineRenderers: Partial<Record<RadarItemKind, (item: unknown) => DigestLine>> = {
@@ -50,6 +79,37 @@ const lineRenderers: Partial<Record<RadarItemKind, (item: unknown) => DigestLine
     const news = item as NewsItem
     return { text: news.title, url: news.url }
   },
+  'weather-now': (item) => {
+    const w = item as WeatherNow
+    const rainChance = Math.max(0, ...w.hours.map((h) => h.precipitationProbability ?? 0))
+    const temps = w.hours.map((h) => h.temperature)
+    const range = temps.length ? `, w ciągu ${w.hours.length} h: ${deg(Math.min(...temps))}…${deg(Math.max(...temps))}` : ''
+    return {
+      text:
+        `${deg(w.temperature)} (odczuwalna ${deg(w.apparentTemperature)}), ${w.description}, ` +
+        `wiatr ${pln(w.windSpeed, 0)} km/h (porywy ${pln(w.windGusts, 0)})${range}, szansa opadów do ${rainChance}%`,
+    }
+  },
+  'weather-day': (item) => {
+    const d = item as WeatherDay
+    const weekday = new Date(`${d.date}T12:00:00Z`).toLocaleDateString(locale, { weekday: 'short', timeZone })
+    const rain = d.precipitationProbabilityMax !== null ? `, opady ${d.precipitationProbabilityMax}%` : ''
+    const [, month, day] = d.date.split('-').map(Number)
+    return { text: `${weekday} ${day}.${month}: ${deg(d.temperatureMin)}…${deg(d.temperatureMax)}, ${d.description}${rain}` }
+  },
+  alert: (item) => {
+    const a = item as AlertItem
+    const until = a.expiresAt ? ` (do ${formatWhen(a.expiresAt)})` : ''
+    return { text: `${SEVERITY_ICON[a.severity]} ${a.title}${until}`, url: a.url ?? undefined }
+  },
+  'air-quality': (item) => {
+    const s = item as AirQualityStation
+    const values = s.pollutants
+      .filter((p) => p.value !== null)
+      .map((p) => `${p.code} ${pln(p.value!, 0)}`)
+      .join(', ')
+    return { text: `${SEVERITY_ICON[s.severity]} ${s.name}: ${s.indexCategory?.toLowerCase() ?? 'brak indeksu'}${values ? ` (${values} µg/m³)` : ''}` }
+  },
 }
 
 /** Key identifying the same item across modules (e.g. one RMF article in the Poland and Warsaw feeds). */
@@ -59,15 +119,21 @@ function crossModuleKey(kind: RadarItemKind | null, item: unknown): string | nul
 
 export function buildDigest(title: string, run: RunResult, registry: ModuleRegistry, maxItemsPerModule: number): Digest {
   const seen = new Set<string>()
-  return { title, sections: run.results.map((result) => toSection(result, registry, maxItemsPerModule, seen)) }
+  return {
+    title,
+    sections: run.results.flatMap((result) =>
+      result.itemKind === 'overview-block' && result.status !== 'error'
+        ? (result.data as OverviewBlock[]).map((block) => blockSection(block, maxItemsPerModule, seen))
+        : [toSection(result, registry, maxItemsPerModule, seen)]
+    ),
+  }
 }
 
-function toSection(result: ModuleResult, registry: ModuleRegistry, maxItems: number, seen: Set<string>): DigestSection {
-  const module = registry.get(result.moduleId)
-  const render = result.itemKind ? lineRenderers[result.itemKind] : undefined
+function renderLines(kind: RadarItemKind | null, items: unknown[], maxItems: number, seen: Set<string>) {
+  const render = kind ? lineRenderers[kind] : undefined
   // Items already shown in an earlier section are skipped, not counted as omitted.
-  const fresh = result.data.filter((item) => {
-    const key = crossModuleKey(result.itemKind, item)
+  const fresh = items.filter((item) => {
+    const key = crossModuleKey(kind, item)
     if (!key) return true
     if (seen.has(key)) return false
     seen.add(key)
@@ -75,13 +141,32 @@ function toSection(result: ModuleResult, registry: ModuleRegistry, maxItems: num
   })
   const shown = fresh.slice(0, maxItems)
   return {
+    lines: render ? shown.map(render) : shown.length ? [{ text: `${fresh.length} elementów` }] : [],
+    omitted: render ? Math.max(0, fresh.length - shown.length) : 0,
+  }
+}
+
+function toSection(result: ModuleResult, registry: ModuleRegistry, maxItems: number, seen: Set<string>): DigestSection {
+  const module = registry.get(result.moduleId)
+  return {
     title: module.name,
     sourceName: result.source.name,
     attribution: result.source.attribution ?? null,
     dataAsOf: result.dataAsOf,
     unavailable: result.status === 'error' ? (result.error?.message ?? 'Źródło niedostępne') : null,
-    lines: render ? shown.map(render) : shown.length ? [{ text: `${fresh.length} elementów` }] : [],
-    omitted: render ? Math.max(0, fresh.length - shown.length) : 0,
+    ...renderLines(result.itemKind, result.data, maxItems, seen),
+  }
+}
+
+/** A composite's block becomes a regular section, rendered with the block's item kind. */
+function blockSection(block: OverviewBlock, maxItems: number, seen: Set<string>): DigestSection {
+  return {
+    title: block.title,
+    sourceName: block.sources.join(', '),
+    attribution: block.attributions.length ? block.attributions.join('; ') : null,
+    dataAsOf: block.dataAsOf,
+    unavailable: block.error,
+    ...renderLines(block.itemKind, block.items, maxItems, seen),
   }
 }
 
@@ -104,7 +189,7 @@ function safeHref(url: string | undefined): string | null {
 
 function sectionMeta(section: DigestSection): string {
   const parts = [section.sourceName]
-  if (section.dataAsOf) parts.push(`stan na ${section.dataAsOf}`)
+  if (section.dataAsOf) parts.push(`stan na ${formatWhen(section.dataAsOf)}`)
   return parts.join(', ')
 }
 

@@ -3,7 +3,15 @@
 export type RadarGroupId = 'news' | 'finance' | 'alerts' | 'weather' | 'overview'
 
 /** Tells consumers (dashboard, delivery formatters) how to render `data` items. */
-export type RadarItemKind = 'currency-rate' | 'gold-price' | 'news'
+export type RadarItemKind =
+  | 'currency-rate'
+  | 'gold-price'
+  | 'news'
+  | 'weather-now'
+  | 'weather-day'
+  | 'alert'
+  | 'air-quality'
+  | 'overview-block'
 
 export type ModuleStatus = 'success' | 'partial' | 'error'
 
@@ -132,4 +140,108 @@ export interface NewsItem {
     /** Labels of matched interests, e.g. ["Vue", "Warszawa"]. */
     matches: string[]
   }
+}
+
+// ---- Weather ----
+
+export interface WeatherHour {
+  time: string
+  temperature: number
+  precipitationProbability: number | null
+  precipitation: number
+  weatherCode: number
+  description: string
+  windSpeed: number
+}
+
+/** Current conditions plus the next hours. Units: °C, mm, km/h, %. */
+export interface WeatherNow {
+  location: string
+  observedAt: string
+  temperature: number
+  apparentTemperature: number
+  humidity: number
+  precipitation: number
+  windSpeed: number
+  windGusts: number
+  weatherCode: number
+  description: string
+  isDay: boolean
+  hours: WeatherHour[]
+}
+
+export interface WeatherDay {
+  /** YYYY-MM-DD in the location's time zone. */
+  date: string
+  weatherCode: number
+  description: string
+  temperatureMin: number
+  temperatureMax: number
+  precipitationSum: number
+  precipitationProbabilityMax: number | null
+  windSpeedMax: number
+  sunrise: string | null
+  sunset: string | null
+}
+
+// ---- Alerts ----
+
+/** info = informational, low/medium/high ≈ IMGW yellow/orange/red. */
+export type AlertSeverity = 'info' | 'low' | 'medium' | 'high'
+export type AlertCategory = 'weather' | 'hydro' | 'air' | 'transport'
+
+export interface AlertItem {
+  id: string
+  source: string
+  category: AlertCategory
+  title: string
+  description: string | null
+  severity: AlertSeverity
+  location: string
+  issuedAt: string | null
+  validFrom: string | null
+  expiresAt: string | null
+  url: string | null
+}
+
+export type AirPollutantCode = 'PM10' | 'PM2.5' | 'NO2' | 'SO2' | 'O3'
+
+export interface AirPollutant {
+  code: AirPollutantCode
+  /** GIOŚ index category for this pollutant, e.g. "Dobry". */
+  indexCategory: string | null
+  /** Latest hourly concentration (µg/m³), when measured at this station. */
+  value: number | null
+  measuredAt: string | null
+}
+
+/** Air quality at one measuring station (GIOŚ). */
+export interface AirQualityStation {
+  stationId: number
+  name: string
+  /** GIOŚ index 0 (very good) … 5 (very bad); null when not computed. */
+  indexValue: number | null
+  indexCategory: string | null
+  criticalPollutant: string | null
+  measuredAt: string | null
+  severity: AlertSeverity
+  pollutants: AirPollutant[]
+}
+
+// ---- Overview (composite) ----
+
+/** One block of an aggregated overview, e.g. "Pogoda" or "Polska — najważniejsze". */
+export interface OverviewBlock {
+  key: string
+  title: string
+  /** How to render `items` (same renderers as regular modules). */
+  itemKind: Exclude<RadarItemKind, 'overview-block'>
+  status: ModuleStatus
+  items: unknown[]
+  sources: string[]
+  /** Attribution texts required by the underlying sources (e.g. IMGW-PIB). */
+  attributions: string[]
+  dataAsOf: string | null
+  /** User-facing message when all modules behind the block failed. */
+  error: string | null
 }

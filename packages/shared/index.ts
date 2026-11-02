@@ -17,12 +17,19 @@ export type {
 } from './dtos/scheduler.dto'
 export type { AdminUser, AuthSessionInfo, LoginDTO } from './models/auth.model'
 export type {
+  AirPollutant,
+  AirPollutantCode,
+  AirQualityStation,
+  AlertCategory,
+  AlertItem,
+  AlertSeverity,
   CurrencyRate,
   GoldPrice,
   ModuleResult,
   ModuleStatus,
   NewsCategory,
   NewsItem,
+  OverviewBlock,
   RadarError,
   RadarErrorCode,
   RadarGroupId,
@@ -32,4 +39,7 @@ export type {
   RadarSourceInfo,
   RunResult,
   RunTarget,
+  WeatherDay,
+  WeatherHour,
+  WeatherNow,
 } from './models/radar.model'

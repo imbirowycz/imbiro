@@ -4,10 +4,15 @@ import { ModuleRunner } from './core/module.runner'
 import type { RadarModule } from './core/module.types'
 import { createScorer } from './parsing/relevance'
 import { radarConfig } from './radar.config'
+import { createMorningOverviewModule } from './composites/morning-overview.module'
+import { createGiosModule } from './sources/alerts/gios.module'
+import { createImgwModule } from './sources/alerts/imgw.module'
+import { createWarsawTransportModule } from './sources/alerts/warsaw-transport.module'
 import { createNbpCurrenciesModule, createNbpGoldModule } from './sources/finance/nbp.modules'
 import { createFeedModule } from './sources/news/feed-module.factory'
 import { createHackerNewsModule } from './sources/news/hackernews.module'
 import { NEWS_FEEDS } from './sources/news/news.feeds'
+import { createWeatherForecastModule, createWeatherNowModule } from './sources/weather/open-meteo.modules'
 
 // The single, explicit list of radar modules and groups.
 // New module = new file with a factory + one `.register(...)` line here (and a group entry).
@@ -56,6 +61,44 @@ export function createRadarRegistry(): ModuleRegistry {
     description: 'Wszystkie źródła wiadomości',
     moduleIds: newsModules.map((m) => m.id),
   })
+
+  const { location, weather, alerts } = radarConfig
+  registry
+    .register(createWeatherNowModule(location, weather.hours))
+    .register(createWeatherForecastModule(location, weather.days))
+    .defineGroup({
+      id: 'weather',
+      name: 'Pogoda',
+      description: `Pogoda teraz i prognoza – ${location.name}`,
+      moduleIds: ['weather.current', 'weather.forecast'],
+    })
+    .register(
+      createImgwModule({
+        locationName: location.name,
+        timeZone: location.timeZone,
+        terytPowiat: location.terytPowiat,
+        voivodeship: location.voivodeship,
+        hydroAreaKeywords: alerts.hydroAreaKeywords,
+      })
+    )
+    .register(createGiosModule({ city: location.giosCity, timeZone: location.timeZone, valueStationIds: alerts.giosValueStationIds }))
+    .register(createWarsawTransportModule({ keywords: alerts.transportKeywords, maxAgeDays: alerts.transportMaxAgeDays }))
+    .defineGroup({
+      id: 'alerts',
+      name: 'Alerty',
+      description: 'Ostrzeżenia IMGW, jakość powietrza GIOŚ, utrudnienia w komunikacji',
+      moduleIds: ['alerts.imgw', 'alerts.gios', 'alerts.warsaw'],
+    })
+
+  const newsIn = (groupId: string) => registry.getGroup(groupId).moduleIds
+  registry.register(
+    createMorningOverviewModule({
+      weather: ['weather.current'],
+      alerts: { imgw: 'alerts.imgw', air: 'alerts.gios', transport: 'alerts.warsaw' },
+      news: { poland: newsIn('news.poland'), world: newsIn('news.world'), it: newsIn('news.it') },
+      finance: { currencies: 'finance.nbp.currencies', gold: 'finance.nbp.gold' },
+    })
+  )
 
   return registry.validate()
 }
