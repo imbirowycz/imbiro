@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { nextTick, ref, watch } from 'vue'
 
-const props = defineProps<{ tabs: { id: string; title: string; loading: boolean; failed: boolean }[]; active: string | null }>()
+const props = defineProps<{
+  tabs: { id: string; title: string; loading: boolean; failed: boolean; allRead: boolean }[]
+  active: string | null
+}>()
 const emit = defineEmits<{ select: [id: string] }>()
 
 const list = ref<HTMLElement | null>(null)
@@ -21,7 +24,13 @@ watch(
   <nav class="tabs" aria-label="Sekcje dashboardu">
     <ul ref="list">
       <li v-for="tab in tabs" :key="tab.id">
+        <!-- Everything read: the section is hidden, so its tab is greyed out and not a link. -->
+        <span v-if="tab.allRead" class="tab read" :data-tab="tab.id" title="Wszystko przeczytane">
+          {{ tab.title }}<span class="sr-only"> (wszystko przeczytane)</span>
+        </span>
         <a
+          v-else
+          class="tab"
           :href="`#radar-${tab.id}`"
           :data-tab="tab.id"
           :aria-current="tab.id === active ? 'location' : undefined"
@@ -57,7 +66,7 @@ ul {
 ul::-webkit-scrollbar {
   display: none;
 }
-a {
+.tab {
   position: relative;
   display: inline-flex;
   align-items: center;
@@ -68,11 +77,25 @@ a {
   text-decoration: none;
   white-space: nowrap;
 }
-a:hover {
+a.tab:hover {
   color: var(--ink);
 }
+/* Greyed out: all news/alerts of the section are read. */
+.tab.read {
+  color: var(--muted);
+  opacity: 0.45;
+  cursor: default;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
 /* Underline marker in the signal colour, like the scheduler's selected-row bar. */
-a[aria-current='location'] {
+.tab[aria-current='location'] {
   color: var(--ink);
   box-shadow: inset 0 -3px 0 var(--signal);
 }

@@ -229,6 +229,8 @@ Oznaczony news albo alert znika z dashboardu i nie trafia do przeglądu poranneg
 - Frontend (`src/radar/read-items.ts`, `items/MarkReadButton.vue`): przycisk ✓ przy newsie i alercie,
   „Przeczytane” w pasku czytnika. Ukrycie natychmiastowe, „Cofnij” przez 6 s; błąd zapisu przywraca wpis.
   Otwarcie artykułu NIE oznacza go jako przeczytany.
+- Sekcja, w której wszystkie newsy/alerty są oznaczone (`allItemsRead`), jest ukryta, a jej zakładka u góry
+  wyszarzona i nieklikalna. „Cofnij” przywraca sekcję. Sekcje z pogodą/kursami nigdy nie są uznawane za przeczytane.
 
 ## Article Reader (tryb czytania)
 

@@ -1,5 +1,5 @@
 import { reactive, ref } from 'vue'
-import { alertReadKey, newsReadKey, type AlertItem } from '@myorg/shared'
+import { alertReadKey, newsReadKey, type AlertItem, type ModuleResult, type NewsItem } from '@myorg/shared'
 import { radarApi, type MarkReadBody } from '../api/radar'
 
 // News and alerts marked as read. Kept on the server (so phone and desktop agree); the keys come with
@@ -39,6 +39,24 @@ export function setReadKeys(keys: string[]): void {
 
 export const isNewsRead = (url: string) => readKeys.has(newsReadKey(url))
 export const isAlertRead = (alert: AlertItem) => readKeys.has(alertReadKey(alert))
+
+/**
+ * True when a section has items and every one of them is a news/alert marked as read
+ * (sections with weather, rates etc. never count as "all read"). Failed sources are ignored.
+ */
+export function allItemsRead(results: readonly (ModuleResult | null)[]): boolean {
+  let items = 0
+  for (const result of results) {
+    if (!result || result.status === 'error') continue
+    for (const item of result.data) {
+      items++
+      if (result.itemKind === 'news' && isNewsRead((item as NewsItem).url)) continue
+      if (result.itemKind === 'alert' && isAlertRead(item as AlertItem)) continue
+      return false
+    }
+  }
+  return items > 0
+}
 
 async function mark(key: string, title: string, body: MarkReadBody): Promise<void> {
   readKeys.add(key)

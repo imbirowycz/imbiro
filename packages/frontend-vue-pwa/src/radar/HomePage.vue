@@ -8,6 +8,7 @@ import RadarSection from './RadarSection.vue'
 import SectionBody from './SectionBody.vue'
 import ReadUndoToast from './ReadUndoToast.vue'
 import SectionTabs from './SectionTabs.vue'
+import { allItemsRead } from './read-items'
 import { useDashboard } from './useDashboard'
 
 const route = useRoute()
@@ -20,12 +21,16 @@ const now = ref(Date.now())
 const newsOrder = ref<Record<string, NewsOrder>>({})
 const activeId = ref<string | null>(null)
 
+/** Sections whose every news/alert is marked as read: hidden, their tab greyed out (Undo brings them back). */
+const allRead = computed(() => new Set(sections.value.filter((s) => !s.error && allItemsRead(s.results)).map((s) => s.id)))
+
 const tabs = computed(() =>
   sections.value.map((s) => ({
     id: s.id,
     title: s.title,
     loading: s.loading,
     failed: !!s.error || s.results.some((r) => r?.status === 'error'),
+    allRead: allRead.value.has(s.id),
   }))
 )
 
@@ -55,7 +60,7 @@ function observeSections() {
 
 function scrollTo(id: string, smooth = true) {
   const el = document.getElementById(`radar-${id}`)
-  if (!el) return
+  if (!el || allRead.value.has(id)) return
   activeId.value = id
   lockedUntil = Date.now() + 900
   el.scrollIntoView({ behavior: smooth && !reducedMotion() ? 'smooth' : 'auto', block: 'start' })
@@ -125,6 +130,7 @@ async function retryLayout() {
       <SectionTabs :tabs="tabs" :active="activeId" @select="scrollTo" />
       <RadarSection
         v-for="section in sections"
+        v-show="!allRead.has(section.id)"
         :key="section.id"
         :section="section"
         :modules="modules"
