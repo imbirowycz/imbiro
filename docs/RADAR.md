@@ -271,7 +271,7 @@ robi konsument (dashboard, przegląd poranny) — `byRelevance` w `parsing/relev
 
 | id | Źródło | Cache | Uwagi |
 |---|---|---|---|
-| `finance.nbp.currencies` | api.nbp.pl, tabela A (2 ostatnie) | 30 min | EUR, USD, CHF, GBP (`radar.config.ts`), zmiana vs poprzednia tabela |
+| `finance.nbp.currencies` | api.nbp.pl, tabela A (2 ostatnie) | 30 min | EUR, USD (`radar.config.ts`), zmiana vs poprzednia tabela |
 | `finance.nbp.gold` | api.nbp.pl, ceny złota (2 ostatnie) | 30 min | PLN za 1 g |
 | `news.hackernews` | HN Firebase API | 15 min | top 30, max 5 zapytań naraz, timeout 25 s |
 | `news.rmf.poland` | RSS | 15 min | Polska |

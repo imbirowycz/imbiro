@@ -53,7 +53,7 @@ export const radarConfig = {
 
   finance: {
     /** Currencies from NBP table A, in display order. */
-    currencies: ['EUR', 'USD', 'CHF', 'GBP'],
+    currencies: ['EUR', 'USD'],
   },
 
   news: {

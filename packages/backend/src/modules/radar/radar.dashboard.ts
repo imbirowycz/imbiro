@@ -14,11 +14,12 @@ interface SectionDefinition {
 
 const SECTIONS: SectionDefinition[] = [
   { id: 'weather', title: 'Pogoda', modules: [{ group: 'weather' }] },
+  // Only rates and gold — economy news are not shown on the dashboard.
+  { id: 'finance', title: 'Finanse', modules: [{ group: 'finance' }] },
   { id: 'poland', title: 'Polska', modules: [{ group: 'news.poland' }] },
   { id: 'world', title: 'Świat', modules: [{ group: 'news.world' }] },
   { id: 'warsaw', title: 'Warszawa', modules: [{ group: 'news.warsaw' }] },
   { id: 'it', title: 'IT', modules: [{ group: 'news.it' }, { group: 'news.security' }] },
-  { id: 'finance', title: 'Finanse', modules: [{ group: 'finance' }, { group: 'news.economy' }] },
   { id: 'alerts', title: 'Alerty', modules: [{ group: 'alerts' }] },
 ]
 
