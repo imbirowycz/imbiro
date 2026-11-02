@@ -10,10 +10,10 @@ import { dismissReadToast, readToast, undoRead } from './read-items'
       <p class="text">
         <template v-if="readToast.error">{{ readToast.error }}</template>
         <template v-else>
-          Oznaczono jako przeczytane: <span class="title">{{ readToast.item.title }}</span>
+          Oznaczono jako przeczytane: <span class="title">{{ readToast.title }}</span>
         </template>
       </p>
-      <button v-if="!readToast.error" type="button" class="undo" @click="undoRead(readToast.item.url)">Cofnij</button>
+      <button v-if="!readToast.error" type="button" class="undo" @click="undoRead(readToast.key)">Cofnij</button>
       <button type="button" class="close" aria-label="Zamknij" @click="dismissReadToast">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
       </button>

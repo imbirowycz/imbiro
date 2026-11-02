@@ -209,20 +209,25 @@ GET /api/radar/dashboard  → układ sekcji + wyniki z cache (natychmiast, bez p
 2. Jeśli moduły zwracają nowy `itemKind` — komponent w `src/radar/items/` i jedna linia w `SectionBody.vue`.
 Zakładka, przewijanie, stany i odświeżanie działają bez dodatkowego kodu.
 
-## Przeczytane newsy
+## Przeczytane (newsy i alerty)
 
-Oznaczony news znika z dashboardu i nie trafia do przeglądu porannego (Telegram/e-mail).
+Oznaczony news albo alert znika z dashboardu i nie trafia do przeglądu porannego (Telegram/e-mail).
 
-- Baza: tabela `radar_read_items` (migracja `004_radar_read_items.sql`), klucz = kanoniczny URL (`canonicalUrl`,
-  ten sam co `NewsItem.url`). Jeden użytkownik, bez `user_id`. Wpisy starsze niż 14 dni są kasowane przy zapisie.
-- API: `POST /api/radar/read-items` `{ url, title?, source? }` (204), `DELETE /api/radar/read-items?url=…` (204);
-  `GET /api/radar/dashboard` zwraca `readUrls` (ostatnie 14 dni).
+- Klucz: `newsReadKey(url)` = `news:<kanoniczny URL>`, `alertReadKey(alert)` = `alert:<id>|<issuedAt ?? validFrom>`
+  (`packages/shared/models/read-items.ts` — ta sama funkcja na serwerze i we frontendzie). Zmieniona wersja
+  ostrzeżenia (nowy czas wydania) ma nowy klucz, więc znów się pokazuje.
+- Baza: `radar_read_items` (`item_key`, `title`, `source`, `read_at`, `expires_at`; migracje `004`, `005`).
+  Termin ważności (`read-marks.ts`): newsy 14 dni; alerty do końca ważności + 1 dzień, bez końca 60 dni
+  (zakres 1–400 dni). Wygasłe wpisy są kasowane przy zapisie.
+- API: `POST /api/radar/read-items` `{ kind: 'news', url, title?, source? }` albo
+  `{ kind: 'alert', id, issuedAt, validFrom, expiresAt, title?, source? }` (204; klucz liczy serwer),
+  `DELETE /api/radar/read-items?key=…` (204); `GET /api/radar/dashboard` zwraca `readKeys` (ważne oznaczenia).
 - Filtr działa w prezentacji, nie w modułach (cache modułów nie zna stanu użytkownika):
-  `NewsList` pomija przeczytane; `radar.deliver` przekazuje je do `buildDigest` jako `skipNewsUrls`.
-  Bloki „top 3” przeglądu porannego są liczone w module zbiorczym, więc po odfiltrowaniu mogą mieć mniej pozycji.
-  Gdy odczyt z bazy się nie uda, przegląd idzie bez filtra (nie blokujemy wysyłki).
-- Frontend (`src/radar/read-items.ts`): przycisk ✓ w wierszu newsa i „Przeczytane” w pasku czytnika.
-  Ukrycie jest natychmiastowe (optymistyczne), pasek „Cofnij” przez 6 s; błąd zapisu przywraca wpis z komunikatem.
+  `NewsList`/`AlertList` pomijają oznaczone; `radar.deliver` przekazuje klucze do `buildDigest` (`skipKeys`) —
+  te same klucze służą tam do usuwania duplikatów. Bloki „top 3” przeglądu porannego są liczone w module
+  zbiorczym, więc po odfiltrowaniu mogą mieć mniej pozycji. Gdy odczyt z bazy się nie uda, przegląd idzie bez filtra.
+- Frontend (`src/radar/read-items.ts`, `items/MarkReadButton.vue`): przycisk ✓ przy newsie i alercie,
+  „Przeczytane” w pasku czytnika. Ukrycie natychmiastowe, „Cofnij” przez 6 s; błąd zapisu przywraca wpis.
   Otwarcie artykułu NIE oznacza go jako przeczytany.
 
 ## Article Reader (tryb czytania)

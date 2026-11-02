@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { z } from 'zod'
-import type { RunTarget } from '@myorg/shared'
+import { alertReadKey, newsReadKey, READ_KEY_MAX_LENGTH, type RunTarget } from '@myorg/shared'
 import { NotFoundError, TooManyRequestsError, ValidationError } from '../../errors'
 import { asyncHandler } from '../../http'
 import type { ModuleRegistry } from './core/module.registry'
@@ -9,17 +9,27 @@ import { radarRegistry, radarRunner } from './radar.catalog'
 import { radarConfig } from './radar.config'
 import { buildDashboardSections, dashboardSnapshot } from './radar.dashboard'
 import { canonicalUrl } from './parsing/news.normalize'
-import { createReadItemsRepository, type ReadItemsStore } from './read-items.repository'
+import { alertMarkExpiry, createReadItemsRepository, newsMarkExpiry, type ReadItemsStore } from './read-items.repository'
 import { ArticleReader, ReaderBusyError } from './reader/article-reader'
 
 type IdParams = { id: string }
 
 const runOptionsSchema = z.strictObject({ force: z.boolean().default(false) })
 const readQuerySchema = z.object({ url: z.string().trim().min(8).max(2000) })
-const markReadSchema = z.strictObject({
-  url: z.string().trim().min(8).max(2000),
-  title: z.string().trim().max(300).nullish(),
-  source: z.string().trim().max(120).nullish(),
+const markLabel = { title: z.string().trim().max(300).nullish(), source: z.string().trim().max(120).nullish() }
+const markReadSchema = z.discriminatedUnion('kind', [
+  z.strictObject({ kind: z.literal('news'), url: z.string().trim().min(8).max(2000), ...markLabel }),
+  z.strictObject({
+    kind: z.literal('alert'),
+    id: z.string().min(1).max(1000),
+    issuedAt: z.string().max(40).nullish(),
+    validFrom: z.string().max(40).nullish(),
+    expiresAt: z.string().max(40).nullish(),
+    ...markLabel,
+  }),
+])
+const unmarkQuerySchema = z.object({
+  key: z.string().min(6).max(READ_KEY_MAX_LENGTH).regex(/^(news:https?:\/\/|alert:)/, 'Unknown key type'),
 })
 
 /** Same canonical form as NewsItem.url, so a mark always matches the item it came from. */
@@ -67,16 +77,23 @@ export function createRadarRouter(
   router.get(
     '/dashboard',
     asyncHandler(async (_req, res) => {
-      res.json(dashboardSnapshot(dashboardSections, runner, reader.domains, await readItems.listUrls()))
+      res.json(dashboardSnapshot(dashboardSections, runner, reader.domains, await readItems.listKeys()))
     })
   )
 
-  // "Read" marks: the dashboard hides these news and the morning digest skips them.
+  // "Read" marks for news and alerts: the dashboard hides them and the morning digest skips them.
+  // The key is computed here with the same shared function the frontend uses to hide items.
   router.post(
     '/read-items',
     asyncHandler(async (req, res) => {
       const body = parseBody(markReadSchema, req.body)
-      await readItems.markRead({ url: articleUrl(body.url), title: body.title, source: body.source })
+      const now = new Date()
+      const mark =
+        body.kind === 'news'
+          ? { key: newsReadKey(articleUrl(body.url)), expiresAt: newsMarkExpiry(now) }
+          : { key: alertReadKey({ id: body.id, issuedAt: body.issuedAt ?? null, validFrom: body.validFrom ?? null }), expiresAt: alertMarkExpiry(body.expiresAt, now) }
+      if (mark.key.length > READ_KEY_MAX_LENGTH) throw new ValidationError('Invalid request', [{ path: '(root)', message: 'Key too long' }])
+      await readItems.markRead({ ...mark, title: body.title, source: body.source })
       res.status(204).end()
     })
   )
@@ -84,8 +101,8 @@ export function createRadarRouter(
   router.delete(
     '/read-items',
     asyncHandler(async (req, res) => {
-      const { url } = parseBody(readQuerySchema, req.query)
-      await readItems.unmarkRead(articleUrl(url))
+      const { key } = parseBody(unmarkQuerySchema, req.query)
+      await readItems.unmarkRead(key)
       res.status(204).end()
     })
   )

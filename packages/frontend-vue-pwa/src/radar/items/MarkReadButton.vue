@@ -1,0 +1,45 @@
+<script setup lang="ts">
+// Round "read — don't show again" button used by news and alert lists.
+defineProps<{ label: string }>()
+</script>
+
+<template>
+  <button type="button" class="mark-read" :aria-label="label" title="Przeczytane — nie pokazuj więcej">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
+  </button>
+</template>
+
+<style scoped>
+.mark-read {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background-color 0.15s;
+}
+.mark-read:hover {
+  border-color: var(--ok);
+  background: rgb(92 200 164 / 0.12);
+  color: var(--ok);
+}
+.mark-read:focus-visible {
+  outline: 2px solid var(--ok);
+  outline-offset: 2px;
+}
+.mark-read svg {
+  width: 1rem;
+  height: 1rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+</style>

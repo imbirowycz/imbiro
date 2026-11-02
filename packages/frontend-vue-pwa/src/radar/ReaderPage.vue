@@ -3,7 +3,7 @@ import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import type { ArticleView } from '@myorg/shared'
 import { radarApi } from '../api/radar'
-import { markRead } from './read-items'
+import { markNewsRead } from './read-items'
 
 // Reader mode: one article, fetched on demand, shown as plain readable text.
 // The HTML comes from the server already sanitized (structure and links only); the page CSP
@@ -92,7 +92,7 @@ function goBack() {
 /** Hide this news on the dashboard for good and go back to it (where "Undo" is shown). */
 function markAsReadAndBack() {
   if (!url.value) return
-  void markRead({ url: url.value, title: article.value?.title ?? url.value, source: article.value?.source ?? null })
+  void markNewsRead({ url: url.value, title: article.value?.title ?? url.value, source: article.value?.source ?? null })
   goBack()
 }
 </script>

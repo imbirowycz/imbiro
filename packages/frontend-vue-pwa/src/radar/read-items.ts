@@ -1,17 +1,19 @@
 import { reactive, ref } from 'vue'
-import type { NewsItem } from '@myorg/shared'
-import { radarApi } from '../api/radar'
+import { alertReadKey, newsReadKey, type AlertItem } from '@myorg/shared'
+import { radarApi, type MarkReadBody } from '../api/radar'
 
-// News marked as read. Kept on the server (so phone and desktop agree); the list comes with
+// News and alerts marked as read. Kept on the server (so phone and desktop agree); the keys come with
 // GET /api/radar/dashboard. Marking hides the item at once (optimistic) and offers "Undo" for a while;
-// when saving fails, the item comes back with a message.
+// when saving fails, the item comes back with a message. Keys: newsReadKey / alertReadKey (@myorg/shared),
+// the same functions the server uses.
 
 const UNDO_MS = 6000
 
-const readUrls = reactive(new Set<string>())
+const readKeys = reactive(new Set<string>())
 
 export interface ReadToast {
-  item: Pick<NewsItem, 'url' | 'title'>
+  key: string
+  title: string
   /** Set when saving failed — the item is visible again and the toast explains why. */
   error: string | null
 }
@@ -30,31 +32,46 @@ export function dismissReadToast() {
   readToast.value = null
 }
 
-export function setReadUrls(urls: string[]): void {
-  readUrls.clear()
-  for (const url of urls) readUrls.add(url)
+export function setReadKeys(keys: string[]): void {
+  readKeys.clear()
+  for (const key of keys) readKeys.add(key)
 }
 
-export function isRead(url: string): boolean {
-  return readUrls.has(url)
-}
+export const isNewsRead = (url: string) => readKeys.has(newsReadKey(url))
+export const isAlertRead = (alert: AlertItem) => readKeys.has(alertReadKey(alert))
 
-export async function markRead(item: { url: string; title: string; source?: string | null }): Promise<void> {
-  readUrls.add(item.url)
-  showToast({ item, error: null })
+async function mark(key: string, title: string, body: MarkReadBody): Promise<void> {
+  readKeys.add(key)
+  showToast({ key, title, error: null })
   try {
-    await radarApi.markRead(item)
+    await radarApi.markRead(body)
   } catch (err) {
-    readUrls.delete(item.url)
-    showToast({ item, error: `Nie udało się zapisać: ${(err as Error).message}` })
+    readKeys.delete(key)
+    showToast({ key, title, error: `Nie udało się zapisać: ${(err as Error).message}` })
   }
 }
 
-export async function undoRead(url: string): Promise<void> {
+export function markNewsRead(item: { url: string; title: string; source?: string | null }): Promise<void> {
+  return mark(newsReadKey(item.url), item.title, { kind: 'news', url: item.url, title: item.title, source: item.source ?? null })
+}
+
+export function markAlertRead(alert: AlertItem): Promise<void> {
+  return mark(alertReadKey(alert), alert.title, {
+    kind: 'alert',
+    id: alert.id,
+    issuedAt: alert.issuedAt,
+    validFrom: alert.validFrom,
+    expiresAt: alert.expiresAt,
+    title: alert.title,
+    source: alert.source,
+  })
+}
+
+export async function undoRead(key: string): Promise<void> {
   dismissReadToast()
-  readUrls.delete(url)
+  readKeys.delete(key)
   try {
-    await radarApi.unmarkRead(url)
+    await radarApi.unmarkRead(key)
   } catch {
     // The mark stays on the server; the item will be hidden again after the next dashboard load.
   }

@@ -45,12 +45,12 @@ export function dashboardSnapshot(
   sections: DashboardSection[],
   runner: ModuleRunner,
   readerDomains: string[],
-  readUrls: string[]
+  readKeys: string[]
 ): DashboardLayout {
   return {
     generatedAt: new Date().toISOString(),
     readerDomains,
-    readUrls,
+    readKeys,
     sections: sections.map((section) => ({
       ...section,
       results: section.moduleIds.map((id) => runner.peek(id)),

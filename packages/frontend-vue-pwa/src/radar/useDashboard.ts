@@ -1,7 +1,7 @@
 import { computed, reactive, ref } from 'vue'
 import type { ModuleResult, RadarModuleInfo } from '@myorg/shared'
 import { radarApi } from '../api/radar'
-import { setReadUrls } from './read-items'
+import { setReadKeys } from './read-items'
 import { setReaderDomains } from './reader'
 
 // State of the Home dashboard. Every section loads, fails and refreshes on its own:
@@ -61,7 +61,7 @@ export function useDashboard() {
       const [layout, catalog] = await Promise.all([radarApi.dashboard(), radarApi.listModules()])
       modules.value = new Map(catalog.map((m) => [m.id, m]))
       setReaderDomains(layout.readerDomains)
-      setReadUrls(layout.readUrls)
+      setReadKeys(layout.readKeys)
       sections.value = layout.sections.map((s) => reactive({ ...s, loading: false, error: null }))
       return true
     } catch (err) {

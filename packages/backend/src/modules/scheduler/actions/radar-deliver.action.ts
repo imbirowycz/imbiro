@@ -68,8 +68,8 @@ export interface RadarDeliverDeps {
   getTelegramToken?: () => string | undefined
   fetchImpl?: typeof fetch
   email?: EmailSender
-  /** URLs of news marked as read (skipped in the digest). */
-  getReadUrls?: () => Promise<string[]>
+  /** Keys of news/alerts marked as read (skipped in the digest). */
+  getReadKeys?: () => Promise<string[]>
 }
 
 export function createRadarDeliverAction(deps: RadarDeliverDeps = {}): ActionHandler<RadarDeliverConfig> {
@@ -77,7 +77,7 @@ export function createRadarDeliverAction(deps: RadarDeliverDeps = {}): ActionHan
   const runner = deps.runner ?? radarRunner
   const getTelegramToken = deps.getTelegramToken ?? (() => config.integrations.telegram.botToken)
   const email = deps.email ?? new EmailSender()
-  const getReadUrls = deps.getReadUrls ?? (() => createReadItemsRepository().listUrls())
+  const getReadKeys = deps.getReadKeys ?? (() => createReadItemsRepository().listKeys())
   const schema = configSchema(registry)
 
   return {
@@ -109,11 +109,11 @@ export function createRadarDeliverAction(deps: RadarDeliverDeps = {}): ActionHan
       }
 
       // A failed lookup must not block the morning digest: send it with read news included.
-      const readUrls = await getReadUrls().catch((err: unknown) => {
+      const readKeys = await getReadKeys().catch((err: unknown) => {
         context.log(`read items unavailable, sending without the filter: ${(err as Error).message}`)
         return [] as string[]
       })
-      const digest = buildDigest(cfg.title ?? context.taskTitle, run, registry, cfg.maxItemsPerModule, { skipNewsUrls: readUrls })
+      const digest = buildDigest(cfg.title ?? context.taskTitle, run, registry, cfg.maxItemsPerModule, { skipKeys: readKeys })
 
       // Only a summary goes back to the scheduler (task_executions.result) — never the fetched data.
       const summary = { target: cfg.target, runStatus: run.status, modules }

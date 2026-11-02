@@ -3,7 +3,8 @@ import { computed, ref } from 'vue'
 import type { NewsItem } from '@myorg/shared'
 import { shortWhen } from '../format'
 import type { NewsOrder } from '../news-order'
-import { isRead, markRead } from '../read-items'
+import { isNewsRead, markNewsRead } from '../read-items'
+import MarkReadButton from './MarkReadButton.vue'
 import { canRead } from '../reader'
 
 // The order is chosen in the section header (NewsOrderToggle) and passed in.
@@ -17,7 +18,7 @@ const expanded = ref(false)
 /** Same story from two feeds (e.g. RMF Polska and RMF Warszawa) is shown once; read news are hidden. */
 const unique = computed(() => {
   const seen = new Set<string>()
-  return props.items.filter((item) => !isRead(item.url) && (seen.has(item.url) ? false : (seen.add(item.url), true)))
+  return props.items.filter((item) => !isNewsRead(item.url) && (seen.has(item.url) ? false : (seen.add(item.url), true)))
 })
 /** Everything in this list was marked as read (as opposed to a source with nothing new). */
 const allRead = computed(() => props.items.length > 0 && unique.value.length === 0)
@@ -62,16 +63,12 @@ const now = new Date()
             Oryginał
           </a>
         </div>
-        <button
-          type="button"
-          class="mark-read"
+        <MarkReadButton
+          class="mark"
           :class="{ 'no-time': !item.publishedAt }"
-          :aria-label="`Oznacz jako przeczytane: ${item.title}`"
-          title="Przeczytane — nie pokazuj więcej"
-          @click="markRead(item)"
-        >
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
-        </button>
+          :label="`Oznacz jako przeczytane: ${item.title}`"
+          @click="markNewsRead(item)"
+        />
       </li>
     </ol>
     <p v-if="allRead" class="all-read">Wszystko przeczytane.</p>
@@ -103,42 +100,12 @@ h3 {
   padding: 0.75rem 0;
   border-bottom: 1px solid var(--line);
 }
-.mark-read {
-  display: inline-grid;
-  flex: none;
-  place-items: center;
-  width: 2rem;
-  height: 2rem;
+.mark {
   /* Lines up with the title (below the time line). */
   margin-top: 1.1rem;
-  padding: 0;
-  border: 1px solid var(--line);
-  border-radius: 50%;
-  background: none;
-  color: var(--muted);
-  cursor: pointer;
-  transition: color 0.15s, border-color 0.15s, background-color 0.15s;
 }
-.mark-read.no-time {
+.mark.no-time {
   margin-top: 0;
-}
-.mark-read:hover {
-  border-color: var(--ok);
-  background: rgb(92 200 164 / 0.12);
-  color: var(--ok);
-}
-.mark-read:focus-visible {
-  outline: 2px solid var(--ok);
-  outline-offset: 2px;
-}
-.mark-read svg {
-  width: 1rem;
-  height: 1rem;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2.2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
 }
 .all-read {
   margin: 0.75rem 0 0;

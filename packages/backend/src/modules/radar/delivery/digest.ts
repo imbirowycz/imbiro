@@ -12,6 +12,7 @@ import type {
   WeatherDay,
   WeatherNow,
 } from '@myorg/shared'
+import { alertReadKey, newsReadKey } from '@myorg/shared'
 import type { ModuleRegistry } from '../core/module.registry'
 import { radarConfig } from '../radar.config'
 
@@ -122,13 +123,16 @@ const lineRenderers: Partial<Record<RadarItemKind, (item: unknown) => DigestLine
 }
 
 /** Key identifying the same item across modules (e.g. one RMF article in the Poland and Warsaw feeds). */
+/** Same keys as read marks (@myorg/shared), so read items are skipped by the same dedupe. */
 function crossModuleKey(kind: RadarItemKind | null, item: unknown): string | null {
-  return kind === 'news' ? `news:${(item as NewsItem).url}` : null
+  if (kind === 'news') return newsReadKey((item as NewsItem).url)
+  if (kind === 'alert') return alertReadKey(item as AlertItem)
+  return null
 }
 
 export interface DigestOptions {
-  /** News marked as read: skipped like duplicates (not counted as omitted). */
-  skipNewsUrls?: Iterable<string>
+  /** Keys of news/alerts marked as read: skipped like duplicates (not counted as omitted). */
+  skipKeys?: Iterable<string>
 }
 
 export function buildDigest(
@@ -138,8 +142,8 @@ export function buildDigest(
   maxItemsPerModule: number,
   options: DigestOptions = {}
 ): Digest {
-  // Read news are pre-seeded as "already shown", so the same dedupe path skips them.
-  const seen = new Set<string>([...(options.skipNewsUrls ?? [])].map((url) => `news:${url}`))
+  // Read items are pre-seeded as "already shown", so the same dedupe path skips them.
+  const seen = new Set<string>(options.skipKeys ?? [])
   return {
     title,
     sections: run.results.flatMap((result) =>

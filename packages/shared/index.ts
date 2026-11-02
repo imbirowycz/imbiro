@@ -47,3 +47,4 @@ export type {
   WeatherHour,
   WeatherNow,
 } from './models/radar.model'
+export { alertReadKey, newsReadKey, READ_KEY_MAX_LENGTH } from './models/read-items'

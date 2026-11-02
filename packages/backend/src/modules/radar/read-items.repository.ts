@@ -1,40 +1,48 @@
 import { pool, type Queryable } from '../../db'
 
-// News marked as read: hidden on the dashboard and skipped in the morning digest.
-// Keyed by the canonical article URL — the same value radar modules put in NewsItem.url.
+export { alertMarkExpiry, newsMarkExpiry } from './read-marks'
 
-/** News are at most a few days old, so older marks can be forgotten. */
-export const READ_ITEMS_RETENTION_DAYS = 14
+// News and alerts marked as read: hidden on the dashboard and skipped in the morning digest.
+// Keyed by `newsReadKey` / `alertReadKey` from @myorg/shared. Every mark has its own expiry,
+// after which it is forgotten (news are gone from the feeds by then, alerts have ended).
+// How long a mark lives: read-marks.ts.
+
+export interface ReadMark {
+  key: string
+  title?: string | null
+  source?: string | null
+  /** When the mark can be forgotten. */
+  expiresAt: Date
+}
 
 export interface ReadItemsStore {
-  /** URLs marked as read within the retention window. */
-  listUrls(): Promise<string[]>
-  markRead(item: { url: string; title?: string | null; source?: string | null }): Promise<void>
-  unmarkRead(url: string): Promise<void>
+  /** Keys of marks that are still valid. */
+  listKeys(): Promise<string[]>
+  markRead(mark: ReadMark): Promise<void>
+  unmarkRead(key: string): Promise<void>
 }
 
 export function createReadItemsRepository(db: Queryable = pool): ReadItemsStore {
   return {
-    async listUrls() {
-      const { rows } = await db.query<{ url: string }>(
-        `SELECT url FROM radar_read_items WHERE read_at > NOW() - make_interval(days => $1) ORDER BY read_at DESC`,
-        [READ_ITEMS_RETENTION_DAYS]
+    async listKeys() {
+      const { rows } = await db.query<{ item_key: string }>(
+        `SELECT item_key FROM radar_read_items WHERE expires_at > NOW() ORDER BY read_at DESC`
       )
-      return rows.map((row) => row.url)
+      return rows.map((row) => row.item_key)
     },
 
-    async markRead({ url, title = null, source = null }) {
+    async markRead({ key, title = null, source = null, expiresAt }) {
       await db.query(
-        `INSERT INTO radar_read_items (url, title, source) VALUES ($1, $2, $3)
-         ON CONFLICT (url) DO UPDATE SET read_at = NOW()`,
-        [url, title, source]
+        `INSERT INTO radar_read_items (item_key, title, source, expires_at) VALUES ($1, $2, $3, $4)
+         ON CONFLICT (item_key) DO UPDATE SET read_at = NOW(), expires_at = EXCLUDED.expires_at`,
+        [key, title, source, expiresAt]
       )
       // Cheap housekeeping on write instead of a separate cron job.
-      await db.query(`DELETE FROM radar_read_items WHERE read_at < NOW() - make_interval(days => $1)`, [READ_ITEMS_RETENTION_DAYS])
+      await db.query(`DELETE FROM radar_read_items WHERE expires_at < NOW()`)
     },
 
-    async unmarkRead(url) {
-      await db.query(`DELETE FROM radar_read_items WHERE url = $1`, [url])
+    async unmarkRead(key) {
+      await db.query(`DELETE FROM radar_read_items WHERE item_key = $1`, [key])
     },
   }
 }

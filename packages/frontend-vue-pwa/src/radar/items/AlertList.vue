@@ -1,9 +1,16 @@
 <script setup lang="ts">
 import type { AirQualityStation, AlertItem } from '@myorg/shared'
+import { computed } from 'vue'
 import { dateTime, number, SEVERITY_LABEL, shortWhen } from '../format'
+import { isAlertRead, markAlertRead } from '../read-items'
+import MarkReadButton from './MarkReadButton.vue'
 
-defineProps<{ alerts: AlertItem[]; air: AirQualityStation[]; heading?: boolean }>()
+const props = defineProps<{ alerts: AlertItem[]; air: AirQualityStation[]; heading?: boolean }>()
 const now = new Date()
+
+/** Alerts marked as read are hidden (a re-issued version has a new key and shows again). */
+const visible = computed(() => props.alerts.filter((a) => !isAlertRead(a)))
+const allRead = computed(() => props.alerts.length > 0 && visible.value.length === 0)
 </script>
 
 <template>
@@ -11,7 +18,7 @@ const now = new Date()
     <div v-if="alerts.length" class="block">
       <h3 v-if="heading">Ostrzeżenia i komunikaty</h3>
       <ul class="list">
-        <li v-for="a in alerts" :key="a.id" class="alert" :class="a.severity">
+        <li v-for="a in visible" :key="a.id" class="alert" :class="a.severity">
           <span class="marker" aria-hidden="true" />
           <div>
             <p class="title">
@@ -29,8 +36,10 @@ const now = new Date()
               <p>{{ a.description }}</p>
             </details>
           </div>
+          <MarkReadButton :label="`Oznacz jako przeczytane: ${a.title}`" @click="markAlertRead(a)" />
         </li>
       </ul>
+      <p v-if="allRead" class="all-read">Wszystko przeczytane.</p>
     </div>
 
     <div v-if="air.length" class="block">
@@ -78,7 +87,8 @@ h3 {
 }
 .alert {
   display: grid;
-  grid-template-columns: 0.75rem minmax(0, 1fr);
+  grid-template-columns: 0.75rem minmax(0, 1fr) auto;
+  align-items: start;
   gap: 0.75rem;
   padding: 0.7rem 0;
   border-bottom: 1px solid var(--line);
@@ -121,6 +131,11 @@ h3 {
   margin: 0.2rem 0 0;
   color: var(--muted);
   font-size: 0.8rem;
+}
+.all-read {
+  margin: 0.75rem 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
 }
 .more summary {
   margin-top: 0.3rem;
