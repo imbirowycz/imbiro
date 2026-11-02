@@ -232,7 +232,7 @@ GET /api/radar/articles/read?url=…  →  ArticleView { status: success | unava
   Gdy czytnik nie przygotuje tekstu (`unsupported`/`unavailable` albo błąd API), strona sama przechodzi
   do oryginału (`location.replace` — „Wstecz” wraca na dashboard). Tytuły z innych domen otwierają oryginał
   w nowej karcie. Link do oryginału renderowany tylko dla http(s).
-- Domeny (2026-11-02): źródła RSS (w tym `zaufanatrzeciastrona.pl`) + `dou.ua`, `dev.ua` + serwisy agregowane przez Polskich Programistów
+- Domeny (2026-11-02): źródła RSS (w tym `zaufanatrzeciastrona.pl`) + `dou.ua` (z IP serwera artykuły DOU dostają 403 od Cloudflare — w praktyce zawsze otwiera się oryginał), `dev.ua` + serwisy agregowane przez Polskich Programistów
   (lista w `radar.config.ts`; YouTube celowo pominięty).
 - Dodanie domeny: wpis w `reader.allowedDomains`; najpierw sprawdź, że strona artykułu odpowiada 200 dla zwykłego
   klienta HTTP (np. thehackernews.com zwracał 403).
