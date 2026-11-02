@@ -135,6 +135,17 @@ curl -b /tmp/imbiro.cookies -H "X-CSRF-Token: $CSRF" -X POST localhost:3000/api/
 }'
 ```
 
+**Sprzątanie bazy** (`db.cleanup`): okresowe usuwanie danych, których aplikacja już nie potrzebuje. Konfiguracja wybiera tylko cele — każdy ma stałą regułę w kodzie (`scheduler/actions/db-cleanup.action.ts`), nazwa tabeli ani SQL nie pochodzą z konfiguracji:
+
+| Cel | Co usuwa |
+|---|---|
+| `radar_read_items` | oznaczenia „przeczytane” po terminie (newsy 14 dni, alerty koniec ważności + 1 dzień) |
+| `admin_sessions` | sesje wygasłe albo bezczynne (ta sama reguła co przy logowaniu) |
+| `login_attempts` | próby logowania starsze niż 1 dzień |
+| `task_executions` | zakończone wykonania (`succeeded`/`failed`) starsze niż `executionsOlderThanDays` (domyślnie 90, 7–3650); nigdy `pending`/`running` ani bieżące |
+
+Przykład: `"actionType": "db.cleanup", "actionConfig": { "targets": ["radar_read_items", "admin_sessions", "login_attempts", "task_executions"], "executionsOlderThanDays": 90 }`, harmonogram np. cron `0 4 * * *`. Wynik (`{ deleted: { <cel>: liczba }, total }`) trafia do historii wykonań.
+
 Typy harmonogramu: `once` (termin = `startAt`), `cron` (`{ "expression": "<5 pól>" }`, liczony w `timezone`), `interval` (`{ "everySeconds": 1800 }`, min. 60). Opcjonalnie `startAt` / `endAt` (ISO 8601 z offsetem) i `enabled`.
 
 - **Jeden termin = jedno wykonanie.** Rekord w `task_executions` ma unikalny `(task_id, scheduled_for)`; drugi job dla tego samego terminu jest pomijany.

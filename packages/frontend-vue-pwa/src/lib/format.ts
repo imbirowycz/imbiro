@@ -7,6 +7,7 @@ export const ACTION_LABELS: Record<string, string> = {
   'telegram.send': 'Telegram',
   'report.generate': 'Raport',
   'radar.deliver': 'Radar',
+  'db.cleanup': 'Sprzątanie bazy',
 }
 
 export const STATUS_LABELS: Record<ExecutionStatus, string> = {

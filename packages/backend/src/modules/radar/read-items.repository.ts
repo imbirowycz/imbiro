@@ -20,10 +20,15 @@ export interface ReadItemsStore {
   listKeys(): Promise<string[]>
   markRead(mark: ReadMark): Promise<void>
   unmarkRead(key: string): Promise<void>
+  /** Removes marks past their expiry; returns how many. */
+  deleteExpired(): Promise<number>
 }
 
 export function createReadItemsRepository(db: Queryable = pool): ReadItemsStore {
+  const deleteExpired = async () => (await db.query(`DELETE FROM radar_read_items WHERE expires_at < NOW()`)).rowCount ?? 0
   return {
+    deleteExpired,
+
     async listKeys() {
       const { rows } = await db.query<{ item_key: string }>(
         `SELECT item_key FROM radar_read_items WHERE expires_at > NOW() ORDER BY read_at DESC`
@@ -37,8 +42,8 @@ export function createReadItemsRepository(db: Queryable = pool): ReadItemsStore 
          ON CONFLICT (item_key) DO UPDATE SET read_at = NOW(), expires_at = EXCLUDED.expires_at`,
         [key, title, source, expiresAt]
       )
-      // Cheap housekeeping on write instead of a separate cron job.
-      await db.query(`DELETE FROM radar_read_items WHERE expires_at < NOW()`)
+      // Cheap housekeeping on write; the db.cleanup scheduler action does the same on a schedule.
+      await deleteExpired()
     },
 
     async unmarkRead(key) {

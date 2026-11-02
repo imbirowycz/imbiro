@@ -1,4 +1,5 @@
 import { ActionRegistry } from './action.registry'
+import { createDbCleanupAction } from './db-cleanup.action'
 import { createEmailSendAction } from './email-send.action'
 import { createRadarDeliverAction } from './radar-deliver.action'
 import { createReportGenerateAction } from './report-generate.action'
@@ -10,6 +11,7 @@ export const actionRegistry = new ActionRegistry()
   .register(createTelegramSendAction())
   .register(createReportGenerateAction())
   .register(createRadarDeliverAction())
+  .register(createDbCleanupAction())
 
 export { ActionRegistry } from './action.registry'
 export * from './action.types'

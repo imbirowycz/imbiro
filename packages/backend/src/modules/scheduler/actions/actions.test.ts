@@ -32,7 +32,7 @@ function detailsOf(fn: () => unknown): string[] {
 
 describe('ActionRegistry', () => {
   it('registers the built-in actions', () => {
-    assert.deepEqual(actionRegistry.list().map((a) => a.type), ['email.send', 'telegram.send', 'report.generate', 'radar.deliver'])
+    assert.deepEqual(actionRegistry.list().map((a) => a.type), ['email.send', 'telegram.send', 'report.generate', 'radar.deliver', 'db.cleanup'])
   })
 
   it('accepts a new action without changes to the core', async () => {

@@ -52,7 +52,9 @@ export class LoginLimiter {
     await db.query('INSERT INTO login_attempts (ip, identifier, succeeded) VALUES ($1, $2, $3)', [ip, identifier, succeeded])
   }
 
-  async deleteOld(db: Queryable = pool): Promise<void> {
-    await db.query(`DELETE FROM login_attempts WHERE created_at < NOW() - INTERVAL '1 day'`)
+  /** Attempts older than a day are useless for the limits (window: minutes). Returns the number deleted. */
+  async deleteOld(db: Queryable = pool): Promise<number> {
+    const result = await db.query(`DELETE FROM login_attempts WHERE created_at < NOW() - INTERVAL '1 day'`)
+    return result.rowCount ?? 0
   }
 }

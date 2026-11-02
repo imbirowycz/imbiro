@@ -14,6 +14,14 @@ const UNIT_SECONDS: Record<IntervalUnit, number> = { minutes: 60, hours: 3600, d
 const browserTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
 const timeZones = Intl.supportedValuesOf('timeZone')
 
+/** Targets of db.cleanup — each has a fixed rule on the server; here only the choice. */
+const CLEANUP_TARGETS = [
+  { value: 'radar_read_items', label: 'Radar: wygasłe oznaczenia „przeczytane”', hint: 'newsy po 14 dniach, alerty po końcu ważności' },
+  { value: 'admin_sessions', label: 'Wygasłe sesje logowania', hint: 'po terminie albo bezczynne' },
+  { value: 'login_attempts', label: 'Stare próby logowania', hint: 'starsze niż 1 dzień' },
+  { value: 'task_executions', label: 'Historia wykonań zadań', hint: 'zakończone, starsze niż wybrana liczba dni' },
+]
+
 interface FormState {
   title: string
   description: string
@@ -34,6 +42,8 @@ interface FormState {
   radarEmailTo: string
   radarEmailSubject: string
   radarMaxItems: number
+  cleanupTargets: string[]
+  cleanupExecutionsDays: number
   rawConfig: string
   scheduleType: ScheduleType
   cronExpression: string
@@ -116,6 +126,8 @@ function fromTask(task: ScheduledTask | null): FormState {
     radarEmailTo: Array.isArray(radarChannel.to) ? radarChannel.to.join(', ') : String(radarChannel.to ?? ''),
     radarEmailSubject: radarChannel.subject ?? '',
     radarMaxItems: Number(action.maxItemsPerModule ?? 5),
+    cleanupTargets: Array.isArray(action.targets) ? (action.targets as string[]) : CLEANUP_TARGETS.map((t) => t.value),
+    cleanupExecutionsDays: Number(action.executionsOlderThanDays ?? 90),
     rawConfig: JSON.stringify(task?.actionConfig ?? {}, null, 2),
     scheduleType: task?.scheduleType ?? 'interval',
     cronExpression: schedule.expression ?? '0 8 * * *',
@@ -140,6 +152,12 @@ function buildActionConfig(state: FormState): Record<string, unknown> {
       return { chatId: state.telegramChatId.trim(), text: state.telegramText }
     case 'report.generate':
       return { periodHours: Number(state.reportPeriodHours) }
+    case 'db.cleanup':
+      return {
+        // Keep the backend's order, whatever order the boxes were ticked in.
+        targets: CLEANUP_TARGETS.map((t) => t.value).filter((v) => state.cleanupTargets.includes(v)),
+        executionsOlderThanDays: Number(state.cleanupExecutionsDays),
+      }
     case 'radar.deliver':
       return {
         target:
@@ -244,7 +262,8 @@ const scheduleTypes: { value: ScheduleType; label: string }[] = [
   { value: 'interval', label: 'Co pewien czas' },
   { value: 'cron', label: 'Cron' },
 ]
-const knownActionForms = ['email.send', 'telegram.send', 'report.generate', 'radar.deliver']
+const knownActionForms = ['email.send', 'telegram.send', 'report.generate', 'radar.deliver', 'db.cleanup']
+
 const radarTargetKinds: { value: RadarTargetKind; label: string }[] = [
   { value: 'group', label: 'Grupa' },
   { value: 'module', label: 'Moduł' },
@@ -395,6 +414,31 @@ const radarTargetKinds: { value: RadarTargetKind; label: string }[] = [
             </label>
           </template>
           <small class="hint">Tytuł wiadomości to nazwa zadania. Dane są pobierane w chwili wykonania i nie są zapisywane.</small>
+        </template>
+
+        <template v-else-if="form.actionType === 'db.cleanup'">
+          <fieldset class="field checklist">
+            <span>Co czyścić</span>
+            <label v-for="t in CLEANUP_TARGETS" :key="t.value" class="check">
+              <input v-model="form.cleanupTargets" type="checkbox" :value="t.value" />
+              {{ t.label }} <em class="muted">{{ t.hint }}</em>
+            </label>
+            <small v-if="fieldError('actionConfig.targets')" class="error">{{ fieldError('actionConfig.targets') }}</small>
+          </fieldset>
+          <label v-if="form.cleanupTargets.includes('task_executions')" class="field">
+            <span>Historia wykonań starsza niż <em>dni, 7–3650</em></span>
+            <input
+              v-model.number="form.cleanupExecutionsDays"
+              type="number"
+              min="7"
+              max="3650"
+              :aria-invalid="!!fieldError('actionConfig.executionsOlderThanDays')"
+            />
+            <small v-if="fieldError('actionConfig.executionsOlderThanDays')" class="error">{{
+              fieldError('actionConfig.executionsOlderThanDays')
+            }}</small>
+          </label>
+          <small class="hint">Usuwane są tylko dane, których aplikacja już nie potrzebuje. Wynik (ile usunięto) widać w historii wykonań.</small>
         </template>
 
         <label v-if="!knownActionForms.includes(form.actionType)" class="field">
