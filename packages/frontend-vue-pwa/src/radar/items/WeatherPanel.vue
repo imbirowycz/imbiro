@@ -15,7 +15,7 @@ const POLLUTANT_LABEL: Partial<Record<AirPollutantCode, string>> = { PM10: 'PM10
         <p class="desc">{{ now.description }}</p>
         <dl>
           <div><dt>Odczuwalna</dt><dd>{{ degrees(now.apparentTemperature) }}</dd></div>
-          <div><dt>Wiatr</dt><dd>{{ number(now.windSpeed, 0) }} km/h, porywy {{ number(now.windGusts, 0) }}</dd></div>
+          <div><dt>Wiatr</dt><dd>{{ number(now.windSpeed, 0) }} km/h<template v-if="now.windGusts !== null">, porywy {{ number(now.windGusts, 0) }}</template></dd></div>
           <div><dt>Wilgotność</dt><dd>{{ number(now.humidity, 0) }}%</dd></div>
           <div><dt>Pomiar</dt><dd>{{ hour(now.observedAt) }}</dd></div>
         </dl>
@@ -40,27 +40,35 @@ const POLLUTANT_LABEL: Partial<Record<AirPollutantCode, string>> = { PM10: 'PM10
         <li v-for="h in now.hours" :key="h.time">
           <span class="h-time">{{ hour(h.time) }}</span>
           <span class="h-temp">{{ degrees(h.temperature) }}</span>
-          <span class="h-rain" :class="{ wet: (h.precipitationProbability ?? 0) >= 40 }">
-            {{ h.precipitationProbability ?? 0 }}%
+          <!-- Probability when the source gives it (Open-Meteo), otherwise the amount (MET Norway). -->
+          <span v-if="h.precipitationProbability !== null" class="h-rain" :class="{ wet: h.precipitationProbability >= 40 }">
+            {{ h.precipitationProbability }}%
           </span>
+          <span v-else class="h-rain" :class="{ wet: h.precipitation >= 0.5 }">{{ number(h.precipitation, 1) }} mm</span>
           <span class="visually-hidden">{{ h.description }}</span>
         </li>
       </ol>
     </div>
 
-    <div v-if="days.length" class="days-wrap">
-      <h3>Kolejne dni</h3>
+    <!-- Collapsed by default: the daily forecast is secondary to "now" and the next hours. -->
+    <details v-if="days.length" class="days-wrap">
+      <summary>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
+        <span>Kolejne dni</span>
+        <span class="days-hint">{{ days.length }} dni</span>
+      </summary>
       <ol class="days">
         <li v-for="d in days" :key="d.date">
           <span class="d-name">{{ dayName(d.date) }}</span>
           <span class="d-range">{{ degrees(d.temperatureMin) }} … {{ degrees(d.temperatureMax) }}</span>
           <span class="d-desc">{{ d.description }}</span>
-          <span class="d-rain" :class="{ wet: (d.precipitationProbabilityMax ?? 0) >= 40 }">
-            opady {{ d.precipitationProbabilityMax ?? 0 }}%
+          <span v-if="d.precipitationProbabilityMax !== null" class="d-rain" :class="{ wet: d.precipitationProbabilityMax >= 40 }">
+            opady {{ d.precipitationProbabilityMax }}%
           </span>
+          <span v-else class="d-rain" :class="{ wet: d.precipitationSum >= 1 }">opady {{ number(d.precipitationSum, 1) }} mm</span>
         </li>
       </ol>
-    </div>
+    </details>
   </div>
 </template>
 
@@ -224,6 +232,52 @@ h3 {
 }
 .days-wrap {
   grid-column: 1 / -1;
+  margin-top: 1.25rem;
+}
+.days-wrap summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.5rem 0.3rem 0.15rem;
+  border-radius: 8px;
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 600;
+  list-style: none;
+  cursor: pointer;
+}
+.days-wrap summary::-webkit-details-marker {
+  display: none;
+}
+.days-wrap summary:hover {
+  background: var(--panel);
+}
+.days-wrap summary svg {
+  width: 1.1rem;
+  height: 1.1rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: transform 0.15s ease;
+}
+.days-wrap[open] summary svg {
+  transform: rotate(90deg);
+}
+.days-hint {
+  color: var(--muted);
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  font-weight: 400;
+}
+.days-wrap[open] .days {
+  margin-top: 0.5rem;
+}
+@media (prefers-reduced-motion: reduce) {
+  .days-wrap summary svg {
+    transition: none;
+  }
 }
 .days {
   margin: 0;

@@ -56,6 +56,23 @@ const airQualitySchema: z.ZodType<AirQualityStation> = z.object({
   ),
 })
 
+/**
+ * GIOŚ names the index categories in the masculine ("Bardzo dobry" — of the index); we show them
+ * as the quality of the air ("Jakość powietrza: Bardzo dobra"), so they are turned feminine.
+ */
+const FEMININE: Record<string, string> = {
+  'bardzo dobry': 'Bardzo dobra',
+  dobry: 'Dobra',
+  umiarkowany: 'Umiarkowana',
+  dostateczny: 'Dostateczna',
+  'zły': 'Zła',
+  'bardzo zły': 'Bardzo zła',
+}
+
+export function airQualityLabel(category: string | null): string | null {
+  return category ? (FEMININE[category.trim().toLowerCase()] ?? category) : null
+}
+
 /** GIOŚ index: 0 very good, 1 good, 2 moderate, 3 sufficient, 4 bad, 5 very bad. */
 export function airSeverity(index: number | null): AlertSeverity {
   if (index === null || index < 3) return 'info'
@@ -158,7 +175,7 @@ export function createGiosModule(options: GiosOptions) {
           const measured = values.get(`${station.id}:${code}`)
           return {
             code,
-            indexCategory: str(index[`Nazwa kategorii indeksu dla wskażnika ${code}`]),
+            indexCategory: airQualityLabel(str(index[`Nazwa kategorii indeksu dla wskażnika ${code}`])),
             value: measured?.value ?? null,
             measuredAt: measured?.measuredAt ?? null,
           }
@@ -169,7 +186,7 @@ export function createGiosModule(options: GiosOptions) {
           name: station.name.replace(new RegExp(`^${options.city},\\s*`), ''),
           // -1 means "index not computed".
           indexValue: indexValue !== null && indexValue >= 0 ? indexValue : null,
-          indexCategory: str(index['Nazwa kategorii indeksu']),
+          indexCategory: airQualityLabel(str(index['Nazwa kategorii indeksu'])),
           criticalPollutant: str(index['Kod zanieczyszczenia krytycznego']),
           measuredAt: localToIso(str(index['Data danych źródłowych, z których policzono wartość indeksu dla wskaźnika st']), options.timeZone),
           severity: airSeverity(indexValue),

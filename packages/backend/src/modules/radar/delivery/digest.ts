@@ -89,13 +89,20 @@ const lineRenderers: Partial<Record<RadarItemKind, (item: unknown) => DigestLine
     return {
       text:
         `${deg(w.temperature)} (odczuwalna ${deg(w.apparentTemperature)}), ${w.description}, ` +
-        `wiatr ${pln(w.windSpeed, 0)} km/h (porywy ${pln(w.windGusts, 0)})${range}, szansa opadów do ${rainChance}%`,
+        `wiatr ${pln(w.windSpeed, 0)} km/h${w.windGusts !== null ? ` (porywy ${pln(w.windGusts, 0)})` : ''}${range}` +
+        (w.hours.some((h) => h.precipitationProbability !== null) ? `, szansa opadów do ${rainChance}%` : ''),
     }
   },
   'weather-day': (item) => {
     const d = item as WeatherDay
     const weekday = new Date(`${d.date}T12:00:00Z`).toLocaleDateString(locale, { weekday: 'short', timeZone })
-    const rain = d.precipitationProbabilityMax !== null ? `, opady ${d.precipitationProbabilityMax}%` : ''
+    // Probability when the source gives it (Open-Meteo), otherwise the amount if any (MET Norway).
+    const rain =
+      d.precipitationProbabilityMax !== null
+        ? `, opady ${d.precipitationProbabilityMax}%`
+        : d.precipitationSum > 0
+          ? `, opady ${pln(d.precipitationSum, 1)} mm`
+          : ''
     const [, month, day] = d.date.split('-').map(Number)
     return { text: `${weekday} ${day}.${month}: ${deg(d.temperatureMin)}…${deg(d.temperatureMax)}, ${d.description}${rain}` }
   },

@@ -144,6 +144,18 @@ Zachowanie:
 Uwaga: zadanie z id modułu, którego już nie ma w katalogu (np. usunięte TVN24), kończy się błędem
 „Invalid action config” bez ponowień — widać go w historii wykonań; wystarczy edytować zadanie.
 
+## Pogoda: źródło zapasowe
+
+`sources/weather/weather.modules.ts` najpierw pyta **Open-Meteo** (1 ponowienie), a gdy nie odpowie — **MET Norway**
+(`sources/weather/met-norway.ts`, Locationforecast 2.0 `complete`; darmowe, bez klucza, CC BY 4.0).
+Wynik ma wtedy `source.name = "MET Norway (zapasowe)"` i atrybucję MET — widać to w nagłówku sekcji i w raporcie.
+
+- MET Norway wymaga User-Agenta z kontaktem (`RADAR_USER_AGENT` w `http/safe-fetch.ts`) i szanowania cache:
+  jedno zapytanie na 30 min, wspólne dla obu modułów pogody.
+- Różnice: MET nie podaje porywów wiatru ani prawdopodobieństwa opadów (pola `null` → UI pokazuje ilość opadów w mm),
+  ani wschodu/zachodu słońca; symbole MET są tłumaczone na kody WMO (`symbolToWmo`).
+- Oba źródła niedostępne → błąd modułu z obiema przyczynami; wtedy działa stale-if-error (ostatnie dobre dane do 6 h).
+
 ## Znane ograniczenia
 
 - Brak testów automatycznych modułów Radaru (świadoma decyzja na tym etapie) — weryfikacja: `npx tsc`, build i ręczne
@@ -279,8 +291,8 @@ robi konsument (dashboard, przegląd poranny) — `byRelevance` w `parsing/relev
 | `news.rmf.warsaw` | RSS | 15 min | Warszawa |
 | `news.rmf.economy`, `news.bankier` | RSS | 15 min | Gospodarka (nie ma sekcji na dashboardzie; dostępne w schedulerze) |
 | `news.cert.pl`, `news.sekurak`, `news.niebezpiecznik` | RSS/Atom | 60 min | Bezpieczeństwo IT (sekcja „IT” na dashboardzie) |
-| `weather.current` | Open-Meteo | 15 min | warunki teraz + prognoza godzinowa (12 h) |
-| `weather.forecast` | Open-Meteo | 60 min | prognoza dzienna (7 dni) |
+| `weather.current` | Open-Meteo, zapasowo MET Norway | 15 min | warunki teraz + prognoza godzinowa (12 h) |
+| `weather.forecast` | Open-Meteo, zapasowo MET Norway | 60 min | prognoza dzienna (7 dni) |
 | `alerts.imgw` | danepubliczne.imgw.pl (meteo + hydro) | 10 min | meteo: filtr TERYT powiatu (1465); hydro: województwo + zlewnia (`wisł*`); susza (stopień -1) = `info`. Wymagana atrybucja IMGW-PIB |
 | `alerts.gios` | api.gios.gov.pl v1 | 30 min | w grupie `weather` (sekcja Pogoda): stacje z `giosStationIds` — domyślnie tylko ul. Grochowska (20487) — z indeksem i stężeniami PM10/PM2.5/NO2; pusta lista = wszystkie stacje w mieście (sam indeks). Lista stacji i czujników w pamięci na dobę. API wymaga `Accept: application/ld+json`. Id z prefiksem `alerts.` zostało ze względu na zgodność zadań schedulera |
 | `alerts.warsaw` | RSS ZTM + WTP | 30 min | filtr słów (`transportKeywords`), ostatnie 14 dni |

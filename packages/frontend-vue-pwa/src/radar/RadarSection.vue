@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { ModuleResult, RadarModuleInfo } from '@myorg/shared'
-import { relativeTime } from '../lib/format'
+import { timeAgo } from './format'
 import type { SectionState } from './useDashboard'
 
 // Frame of one dashboard section: heading, sources, freshness, refresh, and every state
@@ -35,8 +35,7 @@ const moduleName = (id: string) => props.modules.get(id)?.name ?? id
         <p class="meta">
           <span v-if="sources">{{ sources }}</span>
           <span v-if="section.loading" class="status">pobieranie…</span>
-          <!-- The page clock ticks every 30 s; never show a fetch as "in the future". -->
-          <span v-else-if="fetchedAt" class="status">pobrano {{ relativeTime(fetchedAt, Math.max(now, Date.parse(fetchedAt))) }}</span>
+          <span v-else-if="fetchedAt" class="status">pobrano {{ timeAgo(fetchedAt, now) }}</span>
         </p>
       </div>
       <button
@@ -75,7 +74,9 @@ const moduleName = (id: string) => props.modules.get(id)?.name ?? id
       </p>
       <slot v-if="hasData" :results="ok" />
       <p v-else class="state muted">Źródła nie mają teraz nic nowego.</p>
-      <p v-if="attributions.length" class="attribution">{{ attributions.join(' ') }}</p>
+      <div v-if="attributions.length" class="attributions">
+        <p v-for="text in attributions" :key="text">{{ text }}</p>
+      </div>
     </template>
   </section>
 </template>
@@ -166,10 +167,13 @@ h2 {
   padding: 0.3rem 0.7rem;
   font-size: 0.85rem;
 }
-.attribution {
-  margin: 0.75rem 0 0;
+.attributions {
+  margin-top: 0.75rem;
   color: var(--muted);
   font-size: 0.78rem;
+}
+.attributions p {
+  margin: 0.15rem 0 0;
 }
 @media (prefers-reduced-motion: reduce) {
   .spinning svg {

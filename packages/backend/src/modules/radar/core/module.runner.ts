@@ -152,6 +152,8 @@ export class ModuleRunner {
 
       return {
         ...this.baseResult(module, fetchedAt, elapsed()),
+        // A module with a fallback reports where the data really came from.
+        ...(output.source ? { source: output.source } : {}),
         status: warnings.length > 0 ? 'partial' : 'success',
         dataAsOf: output.dataAsOf ?? null,
         data,

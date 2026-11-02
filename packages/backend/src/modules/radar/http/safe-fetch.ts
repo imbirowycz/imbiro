@@ -5,7 +5,8 @@ import { RadarSourceError } from '../core/radar.errors'
 // https-only, limited to an allowlist of hosts (also after redirects), size-capped,
 // abortable, and retried with exponential backoff only when retrying makes sense.
 
-export const RADAR_USER_AGENT = 'imbiro-radar/1.0 (personal news aggregator)'
+// MET Norway's terms require the User-Agent to identify the app and give a contact (here: the app's address).
+export const RADAR_USER_AGENT = 'imbiro-radar/1.0 (+https://2.31.115.87.sslip.io; personal news aggregator)'
 
 const DEFAULT_MAX_BYTES = 2 * 1024 * 1024
 const DEFAULT_RETRIES = 2

@@ -11,7 +11,8 @@ import { createWarsawTransportModule } from './sources/alerts/warsaw-transport.m
 import { createNbpCurrenciesModule, createNbpGoldModule } from './sources/finance/nbp.modules'
 import { createFeedModule } from './sources/news/feed-module.factory'
 import { NEWS_FEEDS } from './sources/news/news.feeds'
-import { createWeatherForecastModule, createWeatherNowModule } from './sources/weather/open-meteo.modules'
+import { createMetNorwayClient } from './sources/weather/met-norway'
+import { createWeatherForecastModule, createWeatherNowModule } from './sources/weather/weather.modules'
 
 // The single, explicit list of radar modules and groups.
 // New module = new file with a factory + one `.register(...)` line here (and a group entry).
@@ -58,9 +59,11 @@ export function createRadarRegistry(): ModuleRegistry {
   })
 
   const { location, weather, alerts } = radarConfig
+  // One MET Norway client shared by both weather modules (one request per 30 min, as its terms ask).
+  const met = createMetNorwayClient(location)
   registry
-    .register(createWeatherNowModule(location, weather.hours))
-    .register(createWeatherForecastModule(location, weather.days))
+    .register(createWeatherNowModule(location, weather.hours, met))
+    .register(createWeatherForecastModule(location, weather.days, met))
     .register(createGiosModule({ city: location.giosCity, timeZone: location.timeZone, stationIds: alerts.giosStationIds }))
     .defineGroup({
       id: 'weather',

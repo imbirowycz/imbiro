@@ -33,6 +33,20 @@ export function dateTime(iso: string): string {
   return new Date(iso).toLocaleString(locale, { timeZone, day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 }
 
+const relative = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' })
+
+/**
+ * For past events only (e.g. when data was fetched): "przed chwilą", "5 minut temu", "2 godziny temu".
+ * Never "za chwilę" — a timestamp slightly ahead of the page clock is treated as "now".
+ */
+export function timeAgo(iso: string, now = Date.now()): string {
+  const seconds = Math.max(0, Math.round((now - new Date(iso).getTime()) / 1000))
+  if (seconds < 45) return 'przed chwilą'
+  if (seconds < 3600) return relative.format(-Math.round(seconds / 60), 'minute')
+  if (seconds < 86_400) return relative.format(-Math.round(seconds / 3600), 'hour')
+  return relative.format(-Math.round(seconds / 86_400), 'day')
+}
+
 export function hour(iso: string): string {
   return new Date(iso).toLocaleTimeString(locale, { timeZone, hour: '2-digit', minute: '2-digit' })
 }

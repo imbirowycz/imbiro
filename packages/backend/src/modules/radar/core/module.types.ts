@@ -20,6 +20,8 @@ export interface ModuleOutput<T> {
   warnings?: string[]
   /** Real date of the data according to the source, if known. */
   dataAsOf?: string | null
+  /** The source that actually delivered the data, when a module can fall back to another one. */
+  source?: RadarSourceInfo
 }
 
 export interface RadarModule<T = unknown> {

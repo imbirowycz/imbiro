@@ -52,7 +52,8 @@ function airSummary(stations: AirQualityStation[]): AlertItem | null {
     id: `gios-air-${worst.stationId}`,
     source: 'GIOŚ',
     category: 'air',
-    title: `Jakość powietrza: ${worst.indexCategory.toLowerCase()} (najgorzej: ${worst.name})`,
+    // "najgorzej" only makes sense when several stations are compared.
+    title: `Jakość powietrza: ${worst.indexCategory.toLowerCase()} (${stations.length > 1 ? 'najgorzej: ' : ''}${worst.name})`,
     description: null,
     severity: worst.severity,
     location: 'Warszawa',

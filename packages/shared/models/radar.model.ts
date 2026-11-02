@@ -168,7 +168,8 @@ export interface WeatherNow {
   humidity: number
   precipitation: number
   windSpeed: number
-  windGusts: number
+  /** Null when the source does not provide gusts (e.g. MET Norway). */
+  windGusts: number | null
   weatherCode: number
   description: string
   isDay: boolean
