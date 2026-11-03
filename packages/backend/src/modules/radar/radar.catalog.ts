@@ -25,7 +25,7 @@ const NEWS_GROUPS: { id: string; name: string; description: string; categories: 
   { id: 'news.world', name: 'Świat', description: 'Wiadomości ze świata', categories: ['world'] },
   { id: 'news.warsaw', name: 'Warszawa', description: 'Wiadomości z Warszawy', categories: ['warsaw'] },
   { id: 'news.economy', name: 'Gospodarka', description: 'Wiadomości gospodarcze', categories: ['economy'] },
-  { id: 'news.it', name: 'IT', description: 'DOU, dev.ua i Polscy Programiści', categories: ['it'] },
+  { id: 'news.it', name: 'IT', description: 'dobreprogramy, Just Join IT, GeekWeek, DOU, dev.ua i Polscy Programiści', categories: ['it'] },
   { id: 'news.security', name: 'Bezpieczeństwo IT', description: 'CERT Polska i serwisy o bezpieczeństwie', categories: ['security'] },
 ]
 
