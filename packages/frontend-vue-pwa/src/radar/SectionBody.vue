@@ -34,7 +34,7 @@ const air = computed(() => itemsOf<AirQualityStation>('air-quality'))
 
 /** News split by category, so e.g. IT and security get their own lists inside one section. */
 const CATEGORY_LABEL: Record<NewsItem['category'], string> = {
-  poland: 'Polska', world: 'Świat', warsaw: 'Warszawa', economy: 'Gospodarka', it: 'IT i technologia', ai: 'IT i technologia', security: 'Bezpieczeństwo',
+  poland: 'Polska', world: 'Świat', warsaw: 'Warszawa', economy: 'Gospodarka', it: 'IT i technologia', ai: 'IT i technologia', security: 'Bezpieczeństwo', health: 'Zdrowie',
 }
 const newsGroups = computed(() => {
   const groups = new Map<string, NewsItem[]>()

@@ -27,6 +27,7 @@ const NEWS_GROUPS: { id: string; name: string; description: string; categories: 
   { id: 'news.economy', name: 'Gospodarka', description: 'Wiadomości gospodarcze', categories: ['economy'] },
   { id: 'news.it', name: 'IT', description: 'dobreprogramy, Just Join IT, GeekWeek, DOU, dev.ua i Polscy Programiści', categories: ['it'] },
   { id: 'news.security', name: 'Bezpieczeństwo IT', description: 'CERT Polska i serwisy o bezpieczeństwie', categories: ['security'] },
+  { id: 'news.health', name: 'Zdrowie', description: 'Dietetycy.org.pl, Interia Zdrowie, Men\'s Fitness i Bieganie.pl', categories: ['health'] },
 ]
 
 export function createRadarRegistry(): ModuleRegistry {

@@ -35,5 +35,11 @@ export const NEWS_FEEDS: FeedDefinition[] = [
   { id: 'news.cert.pl', name: 'CERT Polska', category: 'security', url: 'https://cert.pl/rss.xml', source: { name: 'CERT Polska', homepage: 'https://cert.pl' }, description: 'Ostrzeżenia i analizy CERT Polska', cacheTtlMinutes: 60 },
   { id: 'news.sekurak', name: 'Sekurak', category: 'security', url: 'https://sekurak.pl/feed/', source: { name: 'Sekurak', homepage: 'https://sekurak.pl' }, description: 'Bezpieczeństwo IT', cacheTtlMinutes: 60 },
   { id: 'news.niebezpiecznik', name: 'Niebezpiecznik', category: 'security', url: 'https://feeds.feedburner.com/niebezpiecznik/', source: { name: 'Niebezpiecznik', homepage: 'https://niebezpiecznik.pl' }, description: 'Bezpieczeństwo IT i prywatność', cacheTtlMinutes: 60 },
+  // ---- Zdrowie (odżywianie, trening) — added 2026-11-03 ----
+  { id: 'news.dietetycy', name: 'Dietetycy.org.pl', category: 'health', url: 'https://dietetycy.org.pl/feed/', source: { name: 'Dietetycy.org.pl', homepage: 'https://dietetycy.org.pl' }, description: 'Dietetyka oparta na badaniach', cacheTtlMinutes: 120 },
+  { id: 'news.interia.health', name: 'Interia Zdrowie', category: 'health', url: 'https://zdrowie.interia.pl/feed', source: { name: 'Interia Zdrowie', homepage: 'https://zdrowie.interia.pl' }, description: 'Zdrowie, dieta i aktywność', cacheTtlMinutes: 60 },
+  { id: 'news.mensfitness', name: "Men's Fitness", category: 'health', url: 'https://mensfitness.pl/feed/', source: { name: "Men's Fitness", homepage: 'https://mensfitness.pl' }, description: 'Trening, odżywianie i suplementacja', cacheTtlMinutes: 120 },
+  { id: 'news.bieganie', name: 'Bieganie.pl', category: 'health', url: 'https://bieganie.pl/feed/', source: { name: 'Bieganie.pl', homepage: 'https://bieganie.pl' }, description: 'Trening biegowy i starty', cacheTtlMinutes: 60 },
+
   { id: 'news.zaufana', name: 'Zaufana Trzecia Strona', category: 'security', url: 'https://zaufanatrzeciastrona.pl/feed.xml', source: { name: 'Zaufana Trzecia Strona', homepage: 'https://zaufanatrzeciastrona.pl' }, description: 'Bezpieczeństwo IT i prywatność', cacheTtlMinutes: 60 },
 ]

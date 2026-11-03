@@ -20,6 +20,7 @@ const SECTIONS: SectionDefinition[] = [
   { id: 'world', title: 'Świat', modules: [{ group: 'news.world' }] },
   { id: 'warsaw', title: 'Warszawa', modules: [{ group: 'news.warsaw' }] },
   { id: 'it', title: 'IT', modules: [{ group: 'news.it' }, { group: 'news.security' }] },
+  { id: 'health', title: 'Zdrowie', modules: [{ group: 'news.health' }] },
   { id: 'alerts', title: 'Alerty', modules: [{ group: 'alerts' }] },
 ]
 

@@ -41,6 +41,7 @@ export const radarConfig = {
     allowedDomains: [
       'rmf24.pl', 'bankier.pl', 'cert.pl', 'sekurak.pl', 'niebezpiecznik.pl', 'zaufanatrzeciastrona.pl', 'ztm.waw.pl', 'wtp.waw.pl',
       'dou.ua', 'dev.ua', 'dobreprogramy.pl', 'geekweek.interia.pl',
+      'dietetycy.org.pl', 'zdrowie.interia.pl', 'mensfitness.pl', 'bieganie.pl',
       // Sites aggregated by polscyprogramisci.pl (its /zrodla page and home page, 2026-11-02).
       // A site missing here just opens as the original; YouTube is left out on purpose (no article text).
       'bialko.eu', 'brandsit.pl', 'bulldogjob.pl', 'furas.pl', 'fsgeek.pl', 'itwiz.pl', 'justjoin.it',

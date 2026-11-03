@@ -121,7 +121,7 @@ export interface GoldPrice {
   change: number | null
 }
 
-export type NewsCategory = 'poland' | 'world' | 'warsaw' | 'economy' | 'it' | 'ai' | 'security'
+export type NewsCategory = 'poland' | 'world' | 'warsaw' | 'economy' | 'it' | 'ai' | 'security' | 'health'
 
 /**
  * One news entry, normalized from RSS/Atom/API. Images are intentionally not included

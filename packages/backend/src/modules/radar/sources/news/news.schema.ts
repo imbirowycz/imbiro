@@ -10,7 +10,7 @@ export const newsItemSchema: z.ZodType<NewsItem> = z.object({
   summary: z.string().max(500).nullable(),
   url: httpUrl,
   source: z.string().min(1),
-  category: z.enum(['poland', 'world', 'warsaw', 'economy', 'it', 'ai', 'security']),
+  category: z.enum(['poland', 'world', 'warsaw', 'economy', 'it', 'ai', 'security', 'health']),
   publishedAt: z.iso.datetime().nullable(),
   author: z.string().max(120).nullable(),
   relevance: z.object({ score: z.number().int().min(0), matches: z.array(z.string()) }),
