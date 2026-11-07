@@ -40,7 +40,7 @@ export const radarConfig = {
     /** Article Reader works only for these domains (and their subdomains): the sites our news feeds link to. */
     allowedDomains: [
       'rmf24.pl', 'bankier.pl', 'cert.pl', 'sekurak.pl', 'niebezpiecznik.pl', 'zaufanatrzeciastrona.pl', 'ztm.waw.pl', 'wtp.waw.pl',
-      'dou.ua', 'dev.ua', 'dobreprogramy.pl', 'geekweek.interia.pl',
+      'dou.ua', 'dev.ua', 'geekweek.interia.pl',
       'dietetycy.org.pl', 'zdrowie.interia.pl', 'mensfitness.pl', 'bieganie.pl',
       // Sites aggregated by polscyprogramisci.pl (its /zrodla page and home page, 2026-11-02).
       // A site missing here just opens as the original; YouTube is left out on purpose (no article text).

@@ -255,7 +255,7 @@ GET /api/radar/articles/read?url=…  →  ArticleView { status: success | unava
   Gdy czytnik nie przygotuje tekstu (`unsupported`/`unavailable` albo błąd API), strona sama przechodzi
   do oryginału (`location.replace` — „Wstecz” wraca na dashboard). Tytuły z innych domen otwierają oryginał
   w nowej karcie. Link do oryginału renderowany tylko dla http(s).
-- Domeny (2026-11-02): źródła RSS (w tym `zaufanatrzeciastrona.pl`) + `dou.ua` (z IP serwera artykuły DOU dostają 403 od Cloudflare — w praktyce zawsze otwiera się oryginał), `dev.ua`, `dobreprogramy.pl`, `geekweek.interia.pl`, `dietetycy.org.pl`, `zdrowie.interia.pl`, `mensfitness.pl`, `bieganie.pl` (2026-11-03; `justjoin.it` był już przez Polskich Programistów) + serwisy agregowane przez Polskich Programistów
+- Domeny (2026-11-02): źródła RSS (w tym `zaufanatrzeciastrona.pl`) + `dou.ua` (z IP serwera artykuły DOU dostają 403 od Cloudflare — w praktyce zawsze otwiera się oryginał), `dev.ua`, `geekweek.interia.pl`, `dietetycy.org.pl`, `zdrowie.interia.pl`, `mensfitness.pl`, `bieganie.pl` (2026-11-03; `justjoin.it` był już przez Polskich Programistów) + serwisy agregowane przez Polskich Programistów
   (lista w `radar.config.ts`; YouTube celowo pominięty).
 - Dodanie domeny: wpis w `reader.allowedDomains`; najpierw sprawdź, że strona artykułu odpowiada 200 dla zwykłego
   klienta HTTP (np. thehackernews.com zwracał 403).
@@ -332,7 +332,7 @@ robi konsument (dashboard, przegląd poranny) — `byRelevance` w `parsing/relev
 (3 dni, `radar.config.ts`); wpisy bez daty zostają. Źródła publikujące rzadko (CERT, Niebezpiecznik) bywają przez to puste.
 
 Grupy: `finance`, `weather` (pogoda + jakość powietrza), `alerts` (IMGW + komunikacja), `news.poland`, `news.world`, `news.warsaw`, `news.economy`,
-`news.it` (dobreprogramy, Just Join IT, GeekWeek, DOU, dev.ua, Polscy Programiści), `news.security`, `news.health` (Dietetycy.org.pl, Interia Zdrowie, Men's Fitness, Bieganie.pl — od 2026-11-03), `news` (wszystkie wiadomości). Sekcja „IT” = `news.it` + `news.security`, sekcja „Zdrowie” = `news.health`.
+`news.it` (Just Join IT, GeekWeek, DOU, dev.ua, Polscy Programiści), `news.security`, `news.health` (Dietetycy.org.pl, Interia Zdrowie, Men's Fitness, Bieganie.pl — od 2026-11-03), `news` (wszystkie wiadomości). Sekcja „IT” = `news.it` + `news.security`, sekcja „Zdrowie” = `news.health`.
 
 **Tylko źródła polskojęzyczne** (decyzja z 2026-11-02; wyjątek z tego samego dnia: ukraińskie DOU i dev.ua w sekcji IT): usunięto BBC, The Guardian, Hacker News, The Hacker News,
 blogi Node.js/Vue/TypeScript/Docker/PostgreSQL, wydania z GitHuba, JavaScript Weekly i Simon Willison.

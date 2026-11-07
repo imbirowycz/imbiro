@@ -25,7 +25,6 @@ export const NEWS_FEEDS: FeedDefinition[] = [
   { id: 'news.bankier', name: 'Bankier.pl', category: 'economy', url: 'https://www.bankier.pl/rss/wiadomosci.xml', source: { name: 'Bankier.pl', homepage: 'https://www.bankier.pl' }, description: 'Wiadomości gospodarcze i finansowe' },
 
   // ---- IT (Polscy Programiści has no feed: see polscy-programisci.module.ts) ----
-  { id: 'news.dobreprogramy', name: 'dobreprogramy', category: 'it', url: 'https://www.dobreprogramy.pl/rss/aktualnosci', source: { name: 'dobreprogramy', homepage: 'https://www.dobreprogramy.pl' }, description: 'Aktualności o oprogramowaniu i technologiach', cacheTtlMinutes: 30 },
   { id: 'news.justjoinit', name: 'Just Join IT – blog', category: 'it', url: 'https://justjoin.it/blog/feed', source: { name: 'Just Join IT', homepage: 'https://justjoin.it/blog' }, description: 'Programowanie i rynek pracy IT', cacheTtlMinutes: 60 },
   { id: 'news.geekweek', name: 'GeekWeek', category: 'it', url: 'https://geekweek.interia.pl/feed', source: { name: 'GeekWeek Interia', homepage: 'https://geekweek.interia.pl' }, description: 'Nauka i nowe technologie', cacheTtlMinutes: 30 },
   { id: 'news.dou', name: 'DOU', category: 'it', url: 'https://dou.ua/feed/', source: { name: 'DOU', homepage: 'https://dou.ua' }, description: 'Najciekawsze z DOU – ukraińska społeczność IT', cacheTtlMinutes: 30 },
