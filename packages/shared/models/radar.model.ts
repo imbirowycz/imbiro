@@ -122,7 +122,6 @@ export interface GoldPrice {
 }
 
 export type NewsCategory = 'poland' | 'world' | 'warsaw' | 'economy' | 'it' | 'ai' | 'security' | 'health'
-
 /**
  * One news entry, normalized from RSS/Atom/API. Images are intentionally not included
  * (decision: no external images — CSP and privacy).
