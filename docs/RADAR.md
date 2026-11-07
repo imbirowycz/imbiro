@@ -183,10 +183,11 @@ Wszystko pod `/api/radar`, za logowaniem i CSRF.
 
 `force: true` pomija cache, ale nie częściej niż raz na 60 s na moduł (ochrona źródeł).
 
-## Dashboard (Home)
+## Dashboard (Home oraz Pogoda i finanse)
 
-Frontend: `packages/frontend-vue-pwa/src/radar/`. Trasy (`src/router.ts`): `/` — Radar, `/scheduler/:taskId?` — scheduler
-(stare linki `/#/<id>` są przekierowywane).
+Frontend: `packages/frontend-vue-pwa/src/radar/`. Trasy (`src/router.ts`): `/` — Radar (wiadomości i alerty),
+`/weather` — Pogoda i finanse (od 2026-11-07), `/scheduler/:taskId?` — scheduler (stare linki `/#/<id>` są przekierowywane).
+Obie strony dashboardu mają własną pozycję w sidebarze.
 
 ```
 GET /api/radar/dashboard  → układ sekcji + wyniki z cache (natychmiast, bez pytania źródeł)
@@ -194,18 +195,21 @@ GET /api/radar/dashboard  → układ sekcji + wyniki z cache (natychmiast, bez p
    └─ „Odśwież” sekcji / „Odśwież wszystko”: to samo z force: true
 ```
 
-- Układ sekcji jest na serwerze: `radar.dashboard.ts` (`SECTIONS`) — sekcja = lista grup/modułów.
+- Układ sekcji jest na serwerze: `radar.dashboard.ts` (`SECTIONS`) — sekcja = lista grup/modułów + `page`
+  (`home` albo `weather`), czyli strona, na której się pokazuje. `GET /dashboard` zwraca wszystkie sekcje,
+  każda strona bierze swoje (`useDashboard(page)`); „Odśwież wszystko” i auto-odświeżanie dotyczą tylko jej sekcji.
 - `useDashboard.ts` — stan per sekcja (`loading`, `error`, `results`); odpowiedzi spóźnione względem nowszego
   odświeżenia są ignorowane; automatyczne odświeżanie co 10 min, gdy karta jest widoczna.
 - `RadarSection.vue` — ramka sekcji i wszystkie stany (ładowanie, błąd zapytania, wszystkie źródła padły,
   część padła, brak danych) + atrybucje źródeł.
 - `SectionBody.vue` — renderuje wyniki według `itemKind`; wiadomości dzieli po kategorii (np. IT / Bezpieczeństwo).
-- `SectionTabs.vue` + `HomePage.vue` — przyklejony pasek, płynne przewijanie, aktywna zakładka z `IntersectionObserver`,
-  adres `/#finance` pozwala wrócić do sekcji.
+- `SectionTabs.vue` + `DashboardView.vue` — przyklejony pasek, płynne przewijanie, aktywna zakładka z `IntersectionObserver`,
+  adres `/weather#finance` pozwala wrócić do sekcji. `HomePage.vue` i `WeatherPage.vue` to cienkie strony z `DashboardView`
+  (obie w `KeepAlive` w `App.vue`).
 
 ### Jak dodać sekcję
 
-1. Wpis w `SECTIONS` w `radar.dashboard.ts`: `{ id: 'security', title: 'Bezpieczeństwo', modules: [{ group: 'news.security' }] }`.
+1. Wpis w `SECTIONS` w `radar.dashboard.ts`: `{ id: 'security', title: 'Bezpieczeństwo', page: 'home', modules: [{ group: 'news.security' }] }`.
 2. Jeśli moduły zwracają nowy `itemKind` — komponent w `src/radar/items/` i jedna linia w `SectionBody.vue`.
 Zakładka, przewijanie, stany i odświeżanie działają bez dodatkowego kodu.
 

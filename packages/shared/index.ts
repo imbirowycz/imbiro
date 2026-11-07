@@ -27,6 +27,7 @@ export type {
   ArticleView,
   CurrencyRate,
   DashboardLayout,
+  DashboardPage,
   DashboardSection,
   GoldPrice,
   ModuleResult,

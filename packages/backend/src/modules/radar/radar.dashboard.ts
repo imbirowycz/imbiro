@@ -1,27 +1,28 @@
-import type { DashboardLayout, DashboardSection } from '@myorg/shared'
+import type { DashboardLayout, DashboardPage, DashboardSection } from '@myorg/shared'
 import type { ModuleRegistry } from './core/module.registry'
 import { MAX_MODULES_PER_RUN, type ModuleRunner } from './core/module.runner'
 
-// Layout of the Home dashboard: which modules feed which section. Kept on the server so the
+// Layout of the dashboard pages (Home, Weather & finance): which modules feed which section. Kept on the server so the
 // frontend never hard-codes module ids. Each section is loaded and refreshed independently.
 
 interface SectionDefinition {
   id: string
   title: string
+  page: DashboardPage
   /** Modules shown in the section, in order. Groups are expanded at startup. */
   modules: { group?: string; module?: string }[]
 }
 
 const SECTIONS: SectionDefinition[] = [
-  { id: 'weather', title: 'Pogoda', modules: [{ group: 'weather' }] },
+  { id: 'poland', title: 'Polska', page: 'home', modules: [{ group: 'news.poland' }] },
+  { id: 'world', title: 'Świat', page: 'home', modules: [{ group: 'news.world' }] },
+  { id: 'warsaw', title: 'Warszawa', page: 'home', modules: [{ group: 'news.warsaw' }] },
+  { id: 'it', title: 'IT', page: 'home', modules: [{ group: 'news.it' }, { group: 'news.security' }] },
+  { id: 'health', title: 'Zdrowie', page: 'home', modules: [{ group: 'news.health' }] },
+  { id: 'alerts', title: 'Alerty', page: 'home', modules: [{ group: 'alerts' }] },
+  { id: 'weather', title: 'Pogoda', page: 'weather', modules: [{ group: 'weather' }] },
   // Only rates and gold — economy news are not shown on the dashboard.
-  { id: 'finance', title: 'Finanse', modules: [{ group: 'finance' }] },
-  { id: 'poland', title: 'Polska', modules: [{ group: 'news.poland' }] },
-  { id: 'world', title: 'Świat', modules: [{ group: 'news.world' }] },
-  { id: 'warsaw', title: 'Warszawa', modules: [{ group: 'news.warsaw' }] },
-  { id: 'it', title: 'IT', modules: [{ group: 'news.it' }, { group: 'news.security' }] },
-  { id: 'health', title: 'Zdrowie', modules: [{ group: 'news.health' }] },
-  { id: 'alerts', title: 'Alerty', modules: [{ group: 'alerts' }] },
+  { id: 'finance', title: 'Finanse', page: 'weather', modules: [{ group: 'finance' }] },
 ]
 
 export function buildDashboardSections(registry: ModuleRegistry): DashboardSection[] {
@@ -34,7 +35,7 @@ export function buildDashboardSections(registry: ModuleRegistry): DashboardSecti
     if (moduleIds.length > MAX_MODULES_PER_RUN) {
       throw new Error(`Dashboard section "${section.id}" has ${moduleIds.length} modules (max ${MAX_MODULES_PER_RUN}) — split it`)
     }
-    return { id: section.id, title: section.title, moduleIds }
+    return { id: section.id, title: section.title, page: section.page, moduleIds }
   })
 }
 

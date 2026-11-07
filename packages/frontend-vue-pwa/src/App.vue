@@ -42,9 +42,9 @@ onMounted(async () => {
   <p v-if="checking" class="boot muted">Ładowanie…</p>
   <p v-else-if="startError && !session" class="boot load-error">{{ startError }}</p>
   <AppShell v-else-if="session" :user="session.user" @logout="logout">
-    <!-- Home stays alive: back from the reader returns to the same place without refetching. -->
+    <!-- Dashboard pages stay alive: back from the reader (or another page) returns to the same place without refetching. -->
     <RouterView v-slot="{ Component }">
-      <KeepAlive include="HomePage">
+      <KeepAlive :include="['HomePage', 'WeatherPage']">
         <component :is="Component" />
       </KeepAlive>
     </RouterView>

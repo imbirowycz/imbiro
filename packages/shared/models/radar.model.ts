@@ -253,9 +253,13 @@ export interface OverviewBlock {
 
 // ---- Dashboard ----
 
+/** Page of the app that shows the section: Home (news, alerts) or Weather & finance. */
+export type DashboardPage = 'home' | 'weather'
+
 export interface DashboardSection {
-  /** Stable id, also used as the anchor on the Home page. */
+  /** Stable id, also used as the anchor on its page. */
   id: string
+  page: DashboardPage
   title: string
   moduleIds: string[]
 }

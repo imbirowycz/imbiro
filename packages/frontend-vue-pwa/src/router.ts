@@ -7,6 +7,12 @@ export const router = createRouter({
   routes: [
     { path: '/', name: 'home', component: () => import('./radar/HomePage.vue'), meta: { title: 'Radar' } },
     {
+      path: '/weather',
+      name: 'weather',
+      component: () => import('./radar/WeatherPage.vue'),
+      meta: { title: 'Pogoda i finanse' },
+    },
+    {
       path: '/read',
       name: 'read',
       component: () => import('./radar/ReaderPage.vue'),
@@ -22,7 +28,7 @@ export const router = createRouter({
   ],
   scrollBehavior(to, _from, saved) {
     if (saved) return saved
-    // Section anchors on Home are handled by the page itself (sticky tabs offset).
+    // Section anchors on dashboard pages are handled by the page itself (sticky tabs offset).
     if (to.hash) return false
     return { top: 0 }
   },
