@@ -19,7 +19,10 @@ export interface ReadItemsStore {
   /** Keys of marks that are still valid. */
   listKeys(): Promise<string[]>
   markRead(mark: ReadMark): Promise<void>
+  /** Several marks in one statement (e.g. "mark the whole section as read"). */
+  markManyRead(marks: ReadMark[]): Promise<void>
   unmarkRead(key: string): Promise<void>
+  unmarkManyRead(keys: string[]): Promise<void>
   /** Removes marks past their expiry; returns how many. */
   deleteExpired(): Promise<number>
 }
@@ -46,8 +49,26 @@ export function createReadItemsRepository(db: Queryable = pool): ReadItemsStore 
       await deleteExpired()
     },
 
+    async markManyRead(marks) {
+      if (marks.length === 0) return
+      // Last mark wins for a key that repeats (ON CONFLICT cannot touch the same row twice in one statement).
+      const unique = [...new Map(marks.map((m) => [m.key, m])).values()]
+      await db.query(
+        `INSERT INTO radar_read_items (item_key, title, source, expires_at)
+         SELECT * FROM unnest($1::text[], $2::text[], $3::text[], $4::timestamptz[])
+         ON CONFLICT (item_key) DO UPDATE SET read_at = NOW(), expires_at = EXCLUDED.expires_at`,
+        [unique.map((m) => m.key), unique.map((m) => m.title ?? null), unique.map((m) => m.source ?? null), unique.map((m) => m.expiresAt)]
+      )
+      await deleteExpired()
+    },
+
     async unmarkRead(key) {
       await db.query(`DELETE FROM radar_read_items WHERE item_key = $1`, [key])
+    },
+
+    async unmarkManyRead(keys) {
+      if (keys.length === 0) return
+      await db.query(`DELETE FROM radar_read_items WHERE item_key = ANY($1::text[])`, [keys])
     },
   }
 }

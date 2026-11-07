@@ -9,7 +9,8 @@ import RadarSection from './RadarSection.vue'
 import SectionBody from './SectionBody.vue'
 import ReadUndoToast from './ReadUndoToast.vue'
 import SectionTabs from './SectionTabs.vue'
-import { allItemsRead } from './read-items'
+import { allItemsRead, markAllRead, unreadItems } from './read-items'
+import MarkReadButton from './items/MarkReadButton.vue'
 import { useDashboard } from './useDashboard'
 
 // One dashboard page: its sections (from the server layout), sticky tabs and scroll spy.
@@ -146,6 +147,12 @@ async function retryLayout() {
             v-if="results.some((r) => r.itemKind === 'news' && r.data.length)"
             :model-value="newsOrder[section.id] ?? 'latest'"
             @update:model-value="newsOrder[section.id] = $event"
+          />
+          <MarkReadButton
+            v-if="unreadItems(results).length"
+            all
+            :label="`Oznacz wszystko w sekcji ${section.title} jako przeczytane`"
+            @click="markAllRead(section.title, results)"
           />
         </template>
         <template #default="{ results }">

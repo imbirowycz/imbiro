@@ -13,7 +13,7 @@ import { dismissReadToast, readToast, undoRead } from './read-items'
           Oznaczono jako przeczytane: <span class="title">{{ readToast.title }}</span>
         </template>
       </p>
-      <button v-if="!readToast.error" type="button" class="undo" @click="undoRead(readToast.key)">Cofnij</button>
+      <button v-if="!readToast.error" type="button" class="undo" @click="undoRead(readToast.keys)">Cofnij</button>
       <button type="button" class="close" aria-label="Zamknij" @click="dismissReadToast">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
       </button>

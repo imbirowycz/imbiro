@@ -9,7 +9,7 @@ import { radarRegistry, radarRunner } from './radar.catalog'
 import { radarConfig } from './radar.config'
 import { buildDashboardSections, dashboardSnapshot } from './radar.dashboard'
 import { canonicalUrl } from './parsing/news.normalize'
-import { alertMarkExpiry, createReadItemsRepository, newsMarkExpiry, type ReadItemsStore } from './read-items.repository'
+import { alertMarkExpiry, createReadItemsRepository, newsMarkExpiry, type ReadItemsStore, type ReadMark } from './read-items.repository'
 import { ArticleReader, ReaderBusyError } from './reader/article-reader'
 
 type IdParams = { id: string }
@@ -28,9 +28,12 @@ const markReadSchema = z.discriminatedUnion('kind', [
     ...markLabel,
   }),
 ])
-const unmarkQuerySchema = z.object({
-  key: z.string().min(6).max(READ_KEY_MAX_LENGTH).regex(/^(news:https?:\/\/|alert:)/, 'Unknown key type'),
-})
+const readKeySchema = z.string().min(6).max(READ_KEY_MAX_LENGTH).regex(/^(news:https?:\/\/|alert:)/, 'Unknown key type')
+const unmarkQuerySchema = z.object({ key: readKeySchema })
+/** A whole dashboard section at most: 20 modules × 30 items, plus alerts. */
+const MAX_MARKS_PER_REQUEST = 1000
+const markManySchema = z.strictObject({ items: z.array(markReadSchema).min(1).max(MAX_MARKS_PER_REQUEST) })
+const unmarkManySchema = z.strictObject({ keys: z.array(readKeySchema).min(1).max(MAX_MARKS_PER_REQUEST) })
 
 /** Same canonical form as NewsItem.url, so a mark always matches the item it came from. */
 function articleUrl(raw: string): string {
@@ -56,6 +59,16 @@ function parseBody<T>(schema: z.ZodType<T>, body: unknown): T {
     )
   }
   return result.data
+}
+
+/** Key and expiry of a mark — computed here with the same shared functions the frontend uses to hide items. */
+function toReadMark(body: z.infer<typeof markReadSchema>, now: Date): ReadMark {
+  const mark =
+    body.kind === 'news'
+      ? { key: newsReadKey(articleUrl(body.url)), expiresAt: newsMarkExpiry(now) }
+      : { key: alertReadKey({ id: body.id, issuedAt: body.issuedAt ?? null, validFrom: body.validFrom ?? null }), expiresAt: alertMarkExpiry(body.expiresAt, now) }
+  if (mark.key.length > READ_KEY_MAX_LENGTH) throw new ValidationError('Invalid request', [{ path: '(root)', message: 'Key too long' }])
+  return { ...mark, title: body.title, source: body.source }
 }
 
 /**
@@ -86,14 +99,29 @@ export function createRadarRouter(
   router.post(
     '/read-items',
     asyncHandler(async (req, res) => {
-      const body = parseBody(markReadSchema, req.body)
+      await readItems.markRead(toReadMark(parseBody(markReadSchema, req.body), new Date()))
+      res.status(204).end()
+    })
+  )
+
+  // "Mark the whole section as read": every item in one request; returns the keys (for "Undo").
+  router.post(
+    '/read-items/batch',
+    asyncHandler(async (req, res) => {
+      const { items } = parseBody(markManySchema, req.body)
       const now = new Date()
-      const mark =
-        body.kind === 'news'
-          ? { key: newsReadKey(articleUrl(body.url)), expiresAt: newsMarkExpiry(now) }
-          : { key: alertReadKey({ id: body.id, issuedAt: body.issuedAt ?? null, validFrom: body.validFrom ?? null }), expiresAt: alertMarkExpiry(body.expiresAt, now) }
-      if (mark.key.length > READ_KEY_MAX_LENGTH) throw new ValidationError('Invalid request', [{ path: '(root)', message: 'Key too long' }])
-      await readItems.markRead({ ...mark, title: body.title, source: body.source })
+      const marks = items.map((item) => toReadMark(item, now))
+      await readItems.markManyRead(marks)
+      res.json({ keys: marks.map((m) => m.key) })
+    })
+  )
+
+  // Undo of the above. POST, because a DELETE with a body is poorly supported.
+  router.post(
+    '/read-items/batch-delete',
+    asyncHandler(async (req, res) => {
+      const { keys } = parseBody(unmarkManySchema, req.body)
+      await readItems.unmarkManyRead(keys)
       res.status(204).end()
     })
   )

@@ -23,6 +23,8 @@ export const radarApi = {
   runGroup: (id: string, force = false) => request<RunResult>('POST', `/radar/groups/${encodeURIComponent(id)}/run`, { force }),
   runModules: (moduleIds: string[], force = false) => request<RunResult>('POST', '/radar/run', { moduleIds, force }),
   markRead: (body: MarkReadBody) => request<void>('POST', '/radar/read-items', body),
+  markManyRead: (items: MarkReadBody[]) => request<{ keys: string[] }>('POST', '/radar/read-items/batch', { items }),
+  unmarkManyRead: (keys: string[]) => request<void>('POST', '/radar/read-items/batch-delete', { keys }),
   unmarkRead: (key: string) => request<void>('DELETE', `/radar/read-items?key=${encodeURIComponent(key)}`),
   readArticle: (url: string) => request<ArticleView>('GET', `/radar/articles/read?url=${encodeURIComponent(url)}`),
 }

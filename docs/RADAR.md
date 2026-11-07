@@ -226,12 +226,16 @@ Oznaczony news albo alert znika z dashboardu i nie trafia do przeglądu poranneg
 - API: `POST /api/radar/read-items` `{ kind: 'news', url, title?, source? }` albo
   `{ kind: 'alert', id, issuedAt, validFrom, expiresAt, title?, source? }` (204; klucz liczy serwer),
   `DELETE /api/radar/read-items?key=…` (204); `GET /api/radar/dashboard` zwraca `readKeys` (ważne oznaczenia).
+  Cała sekcja naraz (od 2026-11-07): `POST /api/radar/read-items/batch` `{ items: [...] }` (te same obiekty, 1–1000;
+  odpowiedź `{ keys }`, jeden `INSERT … unnest`) i cofnięcie `POST /api/radar/read-items/batch-delete` `{ keys }` (204).
 - Filtr działa w prezentacji, nie w modułach (cache modułów nie zna stanu użytkownika):
   `NewsList`/`AlertList` pomijają oznaczone; `radar.deliver` przekazuje klucze do `buildDigest` (`skipKeys`) —
   te same klucze służą tam do usuwania duplikatów. Bloki „top 3” przeglądu porannego są liczone w module
   zbiorczym, więc po odfiltrowaniu mogą mieć mniej pozycji. Gdy odczyt z bazy się nie uda, przegląd idzie bez filtra.
 - Frontend (`src/radar/read-items.ts`, `items/MarkReadButton.vue`): przycisk ✓ przy newsie i alercie,
-  „Przeczytane” w pasku czytnika. Ukrycie natychmiastowe, „Cofnij” przez 6 s; błąd zapisu przywraca wpis.
+  „Przeczytane” w pasku czytnika, a w nagłówku sekcji (obok odświeżania) przycisk ✓✓ „Oznacz wszystko jako
+  przeczytane” — oznacza wszystkie nieprzeczytane newsy/alerty sekcji (także te schowane pod „Pokaż więcej”;
+  `markAllRead`), widoczny tylko gdy jest co oznaczyć. „Cofnij” przywraca całą sekcję. Ukrycie natychmiastowe, „Cofnij” przez 6 s; błąd zapisu przywraca wpis.
   Otwarcie artykułu NIE oznacza go jako przeczytany.
 - Sekcja, w której wszystkie newsy/alerty są oznaczone (`allItemsRead`), jest ukryta, a jej zakładka u góry
   wyszarzona i nieklikalna. „Cofnij” przywraca sekcję. Sekcje z pogodą/kursami nigdy nie są uznawane za przeczytane.

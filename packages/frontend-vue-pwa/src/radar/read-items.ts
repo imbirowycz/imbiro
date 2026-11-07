@@ -12,7 +12,8 @@ const UNDO_MS = 6000
 const readKeys = reactive(new Set<string>())
 
 export interface ReadToast {
-  key: string
+  /** Everything "Undo" brings back: one item, or a whole section. */
+  keys: string[]
   title: string
   /** Set when saving failed — the item is visible again and the toast explains why. */
   error: string | null
@@ -60,37 +61,84 @@ export function allItemsRead(results: readonly (ModuleResult | null)[]): boolean
 
 async function mark(key: string, title: string, body: MarkReadBody): Promise<void> {
   readKeys.add(key)
-  showToast({ key, title, error: null })
+  showToast({ keys: [key], title, error: null })
   try {
     await radarApi.markRead(body)
   } catch (err) {
     readKeys.delete(key)
-    showToast({ key, title, error: `Nie udało się zapisać: ${(err as Error).message}` })
+    showToast({ keys: [key], title, error: `Nie udało się zapisać: ${(err as Error).message}` })
   }
 }
 
+/** The server keeps at most 300 characters of a title (it is only a label for the mark). */
+const label = (text: string) => text.slice(0, 300)
+
+const newsBody = (item: { url: string; title: string; source?: string | null }): MarkReadBody => ({
+  kind: 'news',
+  url: item.url,
+  title: label(item.title),
+  source: item.source ?? null,
+})
+
+const alertBody = (alert: AlertItem): MarkReadBody => ({
+  kind: 'alert',
+  id: alert.id,
+  issuedAt: alert.issuedAt,
+  validFrom: alert.validFrom,
+  expiresAt: alert.expiresAt,
+  title: label(alert.title),
+  source: alert.source,
+})
+
 export function markNewsRead(item: { url: string; title: string; source?: string | null }): Promise<void> {
-  return mark(newsReadKey(item.url), item.title, { kind: 'news', url: item.url, title: item.title, source: item.source ?? null })
+  return mark(newsReadKey(item.url), item.title, newsBody(item))
 }
 
 export function markAlertRead(alert: AlertItem): Promise<void> {
-  return mark(alertReadKey(alert), alert.title, {
-    kind: 'alert',
-    id: alert.id,
-    issuedAt: alert.issuedAt,
-    validFrom: alert.validFrom,
-    expiresAt: alert.expiresAt,
-    title: alert.title,
-    source: alert.source,
-  })
+  return mark(alertReadKey(alert), alert.title, alertBody(alert))
 }
 
-export async function undoRead(key: string): Promise<void> {
-  dismissReadToast()
-  readKeys.delete(key)
+/** Unread news and alerts of a section (failed sources skipped) — what "mark all as read" covers. */
+export function unreadItems(results: readonly (ModuleResult | null)[]): { key: string; body: MarkReadBody }[] {
+  const items = new Map<string, MarkReadBody>()
+  for (const result of results) {
+    if (!result || result.status === 'error') continue
+    for (const item of result.data) {
+      if (result.itemKind === 'news') {
+        const news = item as NewsItem
+        if (!isNewsRead(news.url)) items.set(newsReadKey(news.url), newsBody(news))
+      } else if (result.itemKind === 'alert') {
+        const alert = item as AlertItem
+        if (!isAlertRead(alert)) items.set(alertReadKey(alert), alertBody(alert))
+      }
+    }
+  }
+  return [...items].map(([key, body]) => ({ key, body }))
+}
+
+/** Marks every unread news/alert of a section at once (one request); "Undo" brings all of them back. */
+export async function markAllRead(sectionTitle: string, results: readonly (ModuleResult | null)[]): Promise<void> {
+  const items = unreadItems(results)
+  if (items.length === 0) return
+  const keys = items.map((i) => i.key)
+  const title = `wszystko w sekcji ${sectionTitle} (${items.length})`
+  for (const key of keys) readKeys.add(key)
+  showToast({ keys, title, error: null })
   try {
-    await radarApi.unmarkRead(key)
+    await radarApi.markManyRead(items.map((i) => i.body))
+  } catch (err) {
+    for (const key of keys) readKeys.delete(key)
+    showToast({ keys, title, error: `Nie udało się zapisać: ${(err as Error).message}` })
+  }
+}
+
+export async function undoRead(keys: string[]): Promise<void> {
+  dismissReadToast()
+  for (const key of keys) readKeys.delete(key)
+  try {
+    if (keys.length === 1) await radarApi.unmarkRead(keys[0])
+    else await radarApi.unmarkManyRead(keys)
   } catch {
-    // The mark stays on the server; the item will be hidden again after the next dashboard load.
+    // The marks stay on the server; the items will be hidden again after the next dashboard load.
   }
 }
