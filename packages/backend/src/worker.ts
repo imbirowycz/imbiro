@@ -3,6 +3,8 @@ import { createBoss, ensureQueues, QUEUES } from './boss'
 import { config } from './config'
 import { pool } from './db'
 import { runMigrations } from './migrate'
+import { bindPriceQueue, type PriceCheckJobData } from './modules/prices/price-queue'
+import { createPriceCheckWorker } from './modules/prices/price-runtime'
 import type { ExecuteJobData } from './modules/scheduler/scheduler.planner'
 import { SchedulerExecutor } from './modules/scheduler/scheduler.executor'
 import { SchedulerService } from './modules/scheduler/scheduler.service'
@@ -25,6 +27,7 @@ async function main(): Promise<void> {
   // Kilka prób, bo w Docker Compose baza może jeszcze nie przyjmować połączeń.
   await boss.start({ attempts: 5 })
   await ensureQueues(boss)
+  bindPriceQueue(boss)
 
   await reconcile()
   await boss.work(QUEUES.reconcile, reconcile)
@@ -34,6 +37,14 @@ async function main(): Promise<void> {
     QUEUES.execute,
     { localConcurrency: config.worker.concurrency, batchSize: 1, includeMetadata: true },
     async ([job]: JobWithMetadata<ExecuteJobData>[]) => executor.process(job)
+  )
+
+  // Łowca cen: jedno źródło naraz (przeglądarka renderuje strony pojedynczo).
+  const priceWorker = createPriceCheckWorker()
+  await boss.work(
+    QUEUES.priceCheck,
+    { localConcurrency: 1, batchSize: 1, includeMetadata: true },
+    async ([job]: JobWithMetadata<PriceCheckJobData>[]) => priceWorker.process(job)
   )
 
   console.log(`Worker started (concurrency ${config.worker.concurrency})`)

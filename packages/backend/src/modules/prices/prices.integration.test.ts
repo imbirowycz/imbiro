@@ -109,3 +109,86 @@ test('validation: enabled channel requires address, css requires price selector'
     (err: { details?: { path: string }[] }) => !!err.details?.some((d) => d.path === 'sources.0.definition.price')
   )
 })
+
+// ---------- worker ----------
+
+import type { CheckOutcome } from './price-check'
+import { PriceCheckWorker, type CheckHooks } from './price-worker'
+
+function okOutcome(price: number, extra: Partial<NonNullable<CheckOutcome['extraction']>> = {}): CheckOutcome {
+  return {
+    ok: true,
+    fetcher: 'http',
+    httpStatus: 200,
+    finalUrl: 'https://sklep-a.example.com/p/1',
+    durationMs: 5,
+    extraction: { title: 'Bialetti Moka Express 6 tz', price, oldPrice: null, currency: 'PLN', available: true, strategyUsed: 'jsonld', warnings: [], ...extra },
+    comparison: [],
+    selectorMatches: [],
+    attempts: [],
+    error: null,
+    page: { fetcher: 'http', status: 200, finalUrl: 'https://sklep-a.example.com/p/1', html: '<html></html>', durationMs: 5 },
+  }
+}
+
+function failOutcome(code: 'BLOCKED' | 'PRICE_NOT_FOUND' | 'NETWORK_ERROR'): CheckOutcome {
+  return {
+    ...okOutcome(0),
+    ok: false,
+    extraction: null,
+    error: { code, message: code },
+    page: code === 'PRICE_NOT_FOUND' ? { fetcher: 'http', status: 200, finalUrl: 'x', html: '<html>no price</html>', durationMs: 1 } : null,
+  }
+}
+
+export function fakeJob(sourceId: string, reason: 'schedule' | 'now' | 'confirm' = 'now', retryCount = 0) {
+  return { id: 'job', data: { sourceId, reason }, retryCount, retryLimit: 2, signal: new AbortController().signal } as never
+}
+
+export function workerWith(outcomes: CheckOutcome[], hooks: CheckHooks = {}) {
+  return new PriceCheckWorker(hooks, undefined, async () => outcomes.shift() as CheckOutcome, 0)
+}
+
+test('worker: success, failures → warning → failing (one alert), snapshot, recovery', { skip: !enabled }, async () => {
+  const item = await service.create(body({ sources: [{ label: 'A', url: 'https://sklep-a.example.com/p/1', fetchMode: 'auto', definition }] }))
+  const sourceId = item.sources[0].id
+  const alerts: string[] = []
+  const worker = workerWith(
+    [okOutcome(199), failOutcome('PRICE_NOT_FOUND'), failOutcome('PRICE_NOT_FOUND'), failOutcome('PRICE_NOT_FOUND'), failOutcome('PRICE_NOT_FOUND'), okOutcome(189)],
+    { onFailing: async (_i, s, status) => void alerts.push(`${s.label}:${status}`) }
+  )
+  const statusOf = async () => (await service.get(item.id)).sources[0]
+
+  await worker.process(fakeJob(sourceId))
+  assert.equal((await statusOf()).status, 'ok')
+  assert.equal((await statusOf()).lastPrice, 199)
+
+  await worker.process(fakeJob(sourceId))
+  assert.equal((await statusOf()).status, 'warning')
+  await worker.process(fakeJob(sourceId))
+  await worker.process(fakeJob(sourceId))
+  assert.equal((await statusOf()).status, 'failing')
+  await worker.process(fakeJob(sourceId))
+  assert.deepEqual(alerts, ['A:failing'], 'alert only once')
+  const snaps = await pool.query('SELECT COUNT(*)::int AS n FROM price_debug_snapshots WHERE source_id = $1', [sourceId])
+  assert.equal(snaps.rows[0].n, 3, 'keeps last 3 snapshots')
+
+  await worker.process(fakeJob(sourceId))
+  const recovered = await statusOf()
+  assert.equal(recovered.status, 'ok')
+  assert.equal(recovered.consecutiveFailures, 0)
+  assert.equal(recovered.lastPrice, 189)
+  const history = await service.history(sourceId)
+  assert.equal(history.length, 6)
+  await service.delete(item.id)
+})
+
+test('worker: transient errors retry, deleted source is skipped', { skip: !enabled }, async () => {
+  const item = await service.create(body({ sources: [{ label: 'A', url: 'https://sklep-a.example.com/p/1', fetchMode: 'auto', definition }] }))
+  const sourceId = item.sources[0].id
+  const worker = workerWith([failOutcome('NETWORK_ERROR')])
+  await assert.rejects(worker.process(fakeJob(sourceId, 'now', 0)), /NETWORK_ERROR/)
+  assert.equal((await service.get(item.id)).sources[0].status, 'untested', 'no failure recorded before last retry')
+  await service.delete(item.id)
+  assert.deepEqual(await workerWith([]).process(fakeJob(sourceId)), { skipped: 'source no longer exists' })
+})
