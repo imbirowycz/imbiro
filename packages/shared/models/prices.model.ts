@@ -248,3 +248,36 @@ export interface PriceOfferPage {
   offers: PriceOffer[]
   nextCursor: string | null
 }
+
+export type PriceDiscoveryStatus = 'found' | 'not_found' | 'blocked' | 'error'
+
+export interface PriceDiscoveryCandidate {
+  shop: string
+  /** Strona produktu w sklepie (null, gdy nie znaleziono). */
+  url: string | null
+  status: PriceDiscoveryStatus
+  /** ceneo = strona porównywarki; search = wyszukiwarka sklepu. */
+  via: 'ceneo' | 'search'
+  /** Cena z listy ofert Ceneo (orientacyjnie). */
+  ceneoPrice: number | null
+  /** Wynik sprawdzenia znalezionej strony (tryb auto). */
+  check: PriceSourceTestResult | null
+  message: string | null
+}
+
+export interface PriceDiscoveryResult {
+  query: string
+  ceneoUrl: string | null
+  candidates: PriceDiscoveryCandidate[]
+  durationMs: number
+  /** Przerwano po limicie czasu — część sklepów nie została sprawdzona. */
+  timedOut: boolean
+}
+
+export interface PriceDiscoveryDTO {
+  name: string
+  ean?: string | null
+  description?: string | null
+  /** Adresy już dodanych źródeł — ich sklepy są pomijane. */
+  existingUrls?: string[]
+}

@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import type { PriceItem, SavePriceItemDTO } from '@myorg/shared'
+import type { PriceDiscoveryCandidate, PriceItem, SavePriceItemDTO } from '@myorg/shared'
 import { ApiRequestError, pricesApi } from '../api/prices'
 import { shortDate } from './format'
+import DiscoverPanel from './DiscoverPanel.vue'
 import SourceCard from './SourceCard.vue'
 import { AUTO_DEFINITION, draftFromSource, newDraft, parseDefinition, type SourceDraft } from './source-draft'
 import './prices.css'
@@ -78,6 +79,20 @@ onMounted(async () => {
     loading.value = false
   }
 })
+
+const discovering = ref(false)
+const existingUrls = computed(() => sources.value.map((s) => s.url.trim()).filter(Boolean))
+
+/** Dodaje źródła wybrane w „Znajdź źródła” (z wynikiem sprawdzenia, bez definicji = tryb auto). */
+function addDiscovered(candidates: PriceDiscoveryCandidate[]) {
+  // Pusta karta startowa nie jest potrzebna, gdy przychodzą gotowe źródła.
+  sources.value = sources.value.filter((s) => s.id || s.url.trim() || s.definitionText.trim() || s.label.trim())
+  for (const c of candidates) {
+    if (!c.url || existingUrls.value.includes(c.url)) continue
+    sources.value.push({ ...newDraft(), label: c.via === 'ceneo' ? 'Ceneo' : c.shop, url: c.url, test: c.check })
+  }
+  discovering.value = false
+}
 
 function addSource() {
   sources.value.push(newDraft())
@@ -253,6 +268,11 @@ const err = (path: string) => errors.value[path]
           Dla każdego sklepu: wklej link do produktu, kliknij „Kopiuj prompt”, wklej go agentowi AI, a jego odpowiedź (JSON) wklej w pole
           „Definicja źródła”. Potem „Sprawdź źródło”. Puste pole definicji = odczyt automatyczny z danych strukturalnych strony.
         </p>
+        <div class="pr-actions">
+          <button type="button" class="button pr-small-button" :disabled="discovering" @click="discovering = true">🔍 Znajdź źródła</button>
+          <span class="pr-muted">Ceneo + wyszukiwarki sklepów, po nazwie z kodem modelu albo po EAN</span>
+        </div>
+        <DiscoverPanel v-if="discovering" :item="itemInfo" :existing-urls="existingUrls" @add="addDiscovered" @close="discovering = false" />
         <SourceCard
           v-for="(source, index) in sources"
           :key="source.key"

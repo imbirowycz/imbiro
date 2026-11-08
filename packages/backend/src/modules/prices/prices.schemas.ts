@@ -169,6 +169,13 @@ export const promptSchema = z.object({
   currentDefinition: z.unknown().optional(),
 })
 
+export const discoverSchema = z.object({
+  name: z.string().trim().min(1, 'Najpierw podaj nazwę artykułu').max(200),
+  ean: z.string().trim().max(14).nullish(),
+  description: z.string().trim().max(2000).nullish(),
+  existingUrls: z.array(z.string().max(2000)).max(50).optional(),
+})
+
 export const notificationTestSchema = z.discriminatedUnion('channel', [
   z.object({ channel: z.literal('telegram'), telegramChatId }),
   z.object({ channel: z.literal('email'), emailTo: z.email('Niepoprawny adres e-mail') }),

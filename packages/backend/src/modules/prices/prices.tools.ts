@@ -1,11 +1,12 @@
-import type { PricePromptResult, PriceSnapshot, PriceSourceDefinition, PriceSourceTestResult } from '@myorg/shared'
+import type { PriceDiscoveryResult, PricePromptResult, PriceSnapshot, PriceSourceDefinition, PriceSourceTestResult } from '@myorg/shared'
 import { AppError, ValidationError } from '../../errors'
 import { checkSource, fetchPage, toTestResult } from './price-check'
+import { discoverSources } from './price-discover'
 import { assertSelectorsValid, DefinitionError } from './price-extract'
 import { toFetchError } from './price-fetch'
 import { cleanHtmlForPrompt } from './price-html'
 import { buildPricePrompt, PRICE_SOURCE_PROMPT_VERSION } from './price-prompt'
-import { parseInput, promptSchema, snapshotSchema, testSourceSchema } from './prices.schemas'
+import { discoverSchema, parseInput, promptSchema, snapshotSchema, testSourceSchema } from './prices.schemas'
 
 // Narzędzia formularza źródła: „Sprawdź źródło”, „Pobierz HTML dla AI”, „Kopiuj prompt”.
 // Nic nie zapisują w bazie.
@@ -27,6 +28,12 @@ export class PriceTools {
     assertDefinitionSelectors(definition)
     const outcome = await checkSource({ url: body.url, mode: body.fetchMode, definition, signal })
     return toTestResult(outcome)
+  }
+
+  /** „Znajdź źródła”: Ceneo + wyszukiwarki sklepów. Trwa do ~2,5 min. */
+  async discover(input: unknown, signal?: AbortSignal): Promise<PriceDiscoveryResult> {
+    const body = parseInput(discoverSchema, input)
+    return discoverSources({ name: body.name, ean: body.ean, existingUrls: body.existingUrls, signal })
   }
 
   async snapshot(input: unknown, signal?: AbortSignal): Promise<PriceSnapshot> {

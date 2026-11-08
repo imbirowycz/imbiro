@@ -149,6 +149,13 @@ export function createPricesRouter(service: PricesService, tools: PriceTools, no
   )
 
   router.post(
+    '/sources/discover',
+    asyncHandler(async (req, res) => {
+      res.json(await tools.discover(req.body, requestSignal(res)))
+    })
+  )
+
+  router.post(
     '/sources/snapshot',
     asyncHandler(async (req, res) => {
       res.json(await tools.snapshot(req.body, requestSignal(res)))

@@ -1,4 +1,6 @@
 import type {
+  PriceDiscoveryDTO,
+  PriceDiscoveryResult,
   PriceItem,
   PriceObservation,
   PriceOfferPage,
@@ -46,6 +48,7 @@ export const pricesApi = {
 
   testSource: (dto: { url: string; fetchMode: PriceFetchMode; definition?: PriceSourceDefinition }) =>
     request<PriceSourceTestResult>('POST', '/prices/sources/test', dto),
+  discover: (dto: PriceDiscoveryDTO) => request<PriceDiscoveryResult>('POST', '/prices/sources/discover', dto),
   snapshot: (dto: { url: string; fetchMode: PriceFetchMode }) => request<PriceSnapshot>('POST', '/prices/sources/snapshot', dto),
   prompt: (dto: PricePromptDTO) => request<PricePromptResult>('POST', '/prices/sources/prompt', dto),
   history: (sourceId: string) => request<PriceObservation[]>('GET', `/prices/sources/${sourceId}/history`),

@@ -51,6 +51,10 @@ export type {
 export { alertReadKey, newsReadKey, READ_KEY_MAX_LENGTH } from './models/read-items'
 export type {
   PriceAvailabilitySelector,
+  PriceDiscoveryCandidate,
+  PriceDiscoveryDTO,
+  PriceDiscoveryResult,
+  PriceDiscoveryStatus,
   PriceErrorCode,
   PriceExtraction,
   PriceFetchAttempt,
