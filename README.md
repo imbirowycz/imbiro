@@ -204,6 +204,14 @@ npm run build
 
 Kolejność: `@myorg/shared` → `@myorg/backend` → `@myorg/frontend-vue-pwa`.
 
+## Wdrożenie na produkcję
+
+```bash
+npm run deploy
+```
+
+Najpierw `npm run build` (lokalna kontrola — błędy TypeScript/Vite przerywają wdrożenie, zanim cokolwiek trafi na serwer), potem `./deploy.sh`: rsync kodu do `/opt/imbiro` i `docker compose up -d --build` na serwerze. Obrazy budują się na serwerze, lokalne `dist/` nie jest wysyłane. Bez lokalnego builda: `./deploy.sh`. Szczegóły serwera: [`docs/SERVER.md`](docs/SERVER.md).
+
 ## Frontend w obrazie Dockera
 
 Przy budowaniu obrazu frontendu ustawiane jest `VITE_API_BASE_URL=http://localhost:3000`, żeby przeglądarka na hoście wołała API pod portem 3000 (statyczny serwer nie ma proxy jak Vite w dev).

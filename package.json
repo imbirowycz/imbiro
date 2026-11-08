@@ -10,7 +10,8 @@
     "dev": "cross-env DATABASE_URL=postgres://user:password@localhost:5432/app concurrently -n backend,worker,fe -c blue,magenta,green \"npm run dev --workspace=@myorg/backend\" \"npm run dev:worker --workspace=@myorg/backend\" \"npm run dev --workspace=@myorg/frontend-vue-pwa\"",
     "build": "npm run build --workspace=@myorg/shared && npm run build --workspace=@myorg/backend && npm run build --workspace=@myorg/frontend-vue-pwa",
     "docker:up": "docker compose up -d --build",
-    "docker:down": "docker compose down"
+    "docker:down": "docker compose down",
+    "deploy": "npm run build && ./deploy.sh"
   },
   "devDependencies": {
     "concurrently": "^9.1.2",
