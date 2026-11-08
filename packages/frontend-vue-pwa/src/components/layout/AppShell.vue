@@ -2,6 +2,7 @@
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import type { AdminUser } from '@myorg/shared'
+import { refreshUnread, unreadOffers } from '../../prices/unread'
 
 defineProps<{ user: AdminUser }>()
 const emit = defineEmits<{ logout: [] }>()
@@ -45,13 +46,27 @@ function closeDrawer() {
 function onKeydown(event: KeyboardEvent) {
   if (event.key === 'Escape') closeDrawer()
 }
-onMounted(() => document.addEventListener('keydown', onKeydown))
-onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
+// Licznik nieprzeczytanych okazji w menu: przy starcie, przy zmianie strony i co minutę.
+let unreadTimer: ReturnType<typeof setInterval> | undefined
+onMounted(() => {
+  document.addEventListener('keydown', onKeydown)
+  void refreshUnread()
+  unreadTimer = setInterval(refreshUnread, 60_000)
+})
+onBeforeUnmount(() => {
+  document.removeEventListener('keydown', onKeydown)
+  clearInterval(unreadTimer)
+})
+watch(
+  () => route.name,
+  () => void refreshUnread()
+)
 
 const nav = [
   { to: '/', name: 'home', label: 'Home', icon: 'radar' },
   { to: '/weather', name: 'weather', label: 'Pogoda i finanse', icon: 'weather' },
   { to: '/ceny', name: 'prices', label: 'Łowca cen', icon: 'tag' },
+  { to: '/okazje', name: 'offers', label: 'Okazje', icon: 'bell' },
   { to: '/scheduler', name: 'scheduler', label: 'Scheduler', icon: 'clock' },
 ] as const
 // The reader is part of Home (opened from the dashboard).
@@ -114,10 +129,14 @@ const isActive = (name: string) =>
             <svg v-else-if="item.icon === 'tag'" viewBox="0 0 24 24" aria-hidden="true">
               <path d="M3.5 12.5V4.5a1 1 0 0 1 1-1h8l8 8-9 9-8-8z" /><circle cx="8.5" cy="8.5" r="1.5" />
             </svg>
+            <svg v-else-if="item.icon === 'bell'" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 2h-15z" /><path d="M10 20.5a2 2 0 0 0 4 0" />
+            </svg>
             <svg v-else viewBox="0 0 24 24" aria-hidden="true">
               <circle cx="12" cy="12" r="8.5" /><path d="M12 7.5V12l3 2" />
             </svg>
             <span class="label">{{ item.label }}</span>
+            <span v-if="item.name === 'offers' && unreadOffers" class="nav-badge" :aria-label="`${unreadOffers} nieprzeczytanych`">{{ unreadOffers > 99 ? '99+' : unreadOffers }}</span>
           </RouterLink>
         </li>
       </ul>
@@ -209,6 +228,29 @@ const isActive = (name: string) =>
 .link:hover {
   color: var(--ink);
   background: var(--panel);
+}
+.link {
+  position: relative;
+}
+.nav-badge {
+  margin-left: auto;
+  min-width: 1.35rem;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  background: var(--signal);
+  color: var(--night);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.35rem;
+  text-align: center;
+}
+.collapsed .nav-badge {
+  position: absolute;
+  top: 0.15rem;
+  right: 0.25rem;
+  min-width: 1rem;
+  line-height: 1rem;
+  font-size: 0.65rem;
 }
 /* Same marker as the selected row on the scheduler board. */
 .link.active {

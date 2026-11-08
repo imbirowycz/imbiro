@@ -38,6 +38,12 @@ export const router = createRouter({
       meta: { title: 'Artykuł' },
     },
     {
+      path: '/okazje',
+      name: 'offers',
+      component: () => import('./prices/OffersPage.vue'),
+      meta: { title: 'Okazje' },
+    },
+    {
       path: '/scheduler/:taskId?',
       name: 'scheduler',
       component: () => import('./components/SchedulerPage.vue'),
