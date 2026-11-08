@@ -78,3 +78,9 @@ test('looksBlocked', () => {
   assert.equal(looksBlocked(200, '<title>Just a moment...</title><div id="challenge-platform"></div>'), true)
   assert.equal(looksBlocked(200, fixture('css.html')), false)
 })
+
+test('CSS that crashes jsdom is stripped before parsing', () => {
+  const html = '<html><head><style>.a{border:initial}</style><link rel="stylesheet" href="/x.css"></head><body><div style="border: initial"><span class="p">99 zł</span></div></body></html>'
+  const { extraction } = extractProduct(html, { version: 1, strategy: 'css', price: { selector: '.p' } })
+  assert.equal(extraction.price, 99)
+})

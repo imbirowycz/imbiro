@@ -32,7 +32,18 @@ export interface ExtractOutput {
 const silentConsole = new VirtualConsole()
 
 export function parseHtml(html: string, url?: string): Document {
-  return new JSDOM(html, { url: safeUrl(url), virtualConsole: silentConsole }).window.document
+  return new JSDOM(stripStyles(html), { url: safeUrl(url), virtualConsole: silentConsole }).window.document
+}
+
+/**
+ * Usuwa CSS strony przed parsowaniem: nie jest potrzebny do ekstrakcji, a parser CSS jsdom
+ * potrafi rzucić wyjątkiem poza naszym kodem i położyć cały proces (np. ceneo.pl).
+ */
+export function stripStyles(html: string): string {
+  return html
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style\s*>/gi, '')
+    .replace(/<link\b[^>]*rel=["']?stylesheet[^>]*>/gi, '')
+    .replace(/\sstyle\s*=\s*("[^"]*"|'[^']*')/gi, '')
 }
 
 function safeUrl(url?: string): string | undefined {
