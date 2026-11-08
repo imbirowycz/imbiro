@@ -1,4 +1,4 @@
-import { JSDOM } from 'jsdom'
+import { JSDOM, VirtualConsole } from 'jsdom'
 import type {
   PriceAvailabilitySelector,
   PriceExtraction,
@@ -28,8 +28,11 @@ export interface ExtractOutput {
   selectorMatches: { field: string; selector: string; count: number }[]
 }
 
+// Bez logów jsdom (np. „Could not parse CSS stylesheet”) — style stron nas nie interesują.
+const silentConsole = new VirtualConsole()
+
 export function parseHtml(html: string, url?: string): Document {
-  return new JSDOM(html, { url: safeUrl(url) }).window.document
+  return new JSDOM(html, { url: safeUrl(url), virtualConsole: silentConsole }).window.document
 }
 
 function safeUrl(url?: string): string | undefined {

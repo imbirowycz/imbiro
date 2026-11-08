@@ -513,13 +513,18 @@ Otwarte:
 |---|---|---|
 | x-kom, euro.com.pl, morele, ceneo, empik, mediamarkt, komputronik, zalando | 200 ✓ | — |
 | Amazon.pl | 202 (strona weryfikacji) | 200 ✓ |
-| Media Expert | 403 | 403 „Cierpliwości...” ✗ |
+| Media Expert | 403 | pierwsze wizyty 403 „Cierpliwości...”, po kilku wizytach (stały profil z cookies) 200 ✓ |
 | Decathlon | 403 | 403 „Cierpliwości...” ✗ |
 | Allegro | 403 | 403 captcha ✗ |
 
-Wniosek: Media Expert, Decathlon i Allegro blokują także przeglądarkę bez okna. Zgodnie z
+Wniosek: stały profil przeglądarki działa. Media Expert przepuścił stronę po kilku wizytach,
+bez żadnych sztuczek. Decathlon i Allegro blokują także przeglądarkę bez okna. Zgodnie z
 założeniami nie dodawaliśmy wtyczek „stealth” ani obchodzenia captchy, więc te źródła
-dostaną status `blocked`. Opcje: agent w domu z widoczną przeglądarką (serwis ma już
+dostaną status `blocked`.
+
+Test end-to-end (Samsung 990 PRO 1TB): Morele 1185,58 zł i x-kom 1349 zł działają w trybie
+`auto` bez definicji (JSON-LD). Amazon pobiera się przez http, ale nie ma danych
+strukturalnych, więc potrzebuje definicji CSS od AI. Opcje: agent w domu z widoczną przeglądarką (serwis ma już
 przełącznik `BROWSER_HEADLESS=false`, nieprzetestowany) albo oficjalne API Allegro. Z serwera
 Hetznera wyniki mogą być gorsze niż z domu.
 
