@@ -5,6 +5,7 @@ import { config } from './config'
 import { pool } from './db'
 import { runMigrations } from './migrate'
 import { prepareAuth } from './modules/auth/password'
+import { bindPriceQueue } from './modules/prices/price-queue'
 import { SchedulerService } from './modules/scheduler/scheduler.service'
 
 // API tylko zapisuje zadania i wysyła joby do pg-boss; wykonuje je osobny proces Workera.
@@ -19,6 +20,7 @@ async function main(): Promise<void> {
   await boss.start({ attempts: 5 })
   // Idempotentne; API może wystartować przed Workerem i od razu przyjmować zadania.
   await ensureQueues(boss)
+  bindPriceQueue(boss)
 
   const app = createApp(new SchedulerService(boss))
   server = app.listen(config.port, '0.0.0.0', () => {

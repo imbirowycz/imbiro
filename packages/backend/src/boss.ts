@@ -7,6 +7,8 @@ export const QUEUES = {
   execute: 'scheduler.execute',
   // Cykliczna (co minutę) ponowna synchronizacja terminów z kolejką — siatka bezpieczeństwa.
   reconcile: 'scheduler.reconcile',
+  // Łowca cen: jedno sprawdzenie jednego źródła.
+  priceCheck: 'prices.check',
 } as const
 
 export const JOB_EXPIRE_GRACE_SECONDS = 60
@@ -50,6 +52,17 @@ const queueDefinitions: Queue[] = [
     expireInSeconds: 120,
     retryLimit: 0,
     deleteAfterSeconds: 3600,
+  },
+  {
+    name: QUEUES.priceCheck,
+    // singletonKey = źródło (+ rodzaj sprawdzenia): nie kumulujemy sprawdzeń jednego źródła.
+    policy: 'exclusive',
+    expireInSeconds: 300,
+    retryLimit: 2,
+    retryDelay: 60,
+    retryBackoff: true,
+    retryDelayMax: 900,
+    deleteAfterSeconds: 7 * 24 * 3600,
   },
 ]
 

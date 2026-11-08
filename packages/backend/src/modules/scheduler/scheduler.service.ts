@@ -8,7 +8,7 @@ import { ConflictError, NotFoundError, ValidationError } from '../../errors'
 import { actionRegistry, type ActionRegistry } from './actions'
 import { initialRunAt } from './schedule'
 import { ExecutionRepository, toExecutionDto } from './execution.repository'
-import { enqueueManualRun, enqueueSlot, syncSlot } from './scheduler.planner'
+import { cancelSlot, enqueueManualRun, enqueueSlot, syncSlot } from './scheduler.planner'
 import { SchedulerRepository, toDto, type TaskRecord, type TaskWrite } from './scheduler.repository'
 import { assertPatchShape, parseTaskDefinition, type TaskDefinition } from './scheduler.validation'
 
@@ -53,22 +53,38 @@ export class SchedulerService {
     const definition = this.parseDefinition(body)
     const nextRunAt = this.planOrReject(definition, now)
 
-    return withTransaction(async (client) => {
-      const created = await this.repository.insert(
-        { ...definition, nextRunAt, scheduleVersion: 1 },
-        client
-      )
-      await syncSlot(this.boss, null, created, bossDb(client))
-      return toDto(created)
-    })
+    return withTransaction(async (client) => toDto(await this.insertWithin(client, definition, nextRunAt)))
+  }
+
+  /**
+   * Utworzenie zadania w transakcji otwartej przez wywołującego (np. moduł, który zarządza
+   * „swoim” zadaniem). Walidacja i planowanie jak w create().
+   */
+  async createWithin(client: PoolClient, input: unknown): Promise<ScheduledTask> {
+    const now = this.now()
+    const body = assertPatchShape(input)
+    if (body.startAt === undefined && body.scheduleType !== 'once') body.startAt = now.toISOString()
+    const definition = this.parseDefinition(body)
+    return toDto(await this.insertWithin(client, definition, this.planOrReject(definition, now)))
+  }
+
+  private async insertWithin(client: PoolClient, definition: TaskDefinition, nextRunAt: Date | null): Promise<TaskRecord> {
+    const created = await this.repository.insert({ ...definition, nextRunAt, scheduleVersion: 1 }, client)
+    await syncSlot(this.boss, null, created, bossDb(client))
+    return created
   }
 
   async update(id: string, input: unknown): Promise<ScheduledTask> {
+    return withTransaction((client) => this.updateWithin(client, id, input))
+  }
+
+  /** Edycja zadania w transakcji wywołującego. */
+  async updateWithin(client: PoolClient, id: string, input: unknown): Promise<ScheduledTask> {
     assertUuid(id)
     const patch = assertPatchShape(input)
     if (Object.keys(patch).length === 0) throw new ValidationError('Nothing to update')
 
-    return withTransaction(async (client) => {
+    {
       const previous = await this.lockTask(id, client)
       // Zmiana typu harmonogramu bez nowej konfiguracji nie może dziedziczyć starej.
       if (patch.scheduleType !== undefined && patch.scheduleType !== previous.scheduleType && patch.scheduleConfig === undefined) {
@@ -86,7 +102,20 @@ export class SchedulerService {
       const updated = await this.repository.update(id, next, client)
       await syncSlot(this.boss, previous, updated, bossDb(client))
       return toDto(updated)
-    })
+    }
+  }
+
+  /**
+   * Usunięcie zadania w transakcji wywołującego: anuluje oczekujący job terminu, a historia
+   * wykonań znika kaskadowo. Joby, których nie da się anulować (już wykonywane), executor
+   * pominie, bo zadanie nie istnieje.
+   */
+  async deleteWithin(client: PoolClient, id: string): Promise<void> {
+    assertUuid(id)
+    const previous = await this.repository.findById(id, client, { forUpdate: true })
+    if (!previous) return
+    await cancelSlot(this.boss, previous, bossDb(client))
+    await this.repository.delete(id, client)
   }
 
   async enable(id: string): Promise<ScheduledTask> {

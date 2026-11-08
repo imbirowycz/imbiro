@@ -126,6 +126,11 @@ export class SchedulerRepository {
     return toRecord(result.rows[0])
   }
 
+  async delete(id: string, db: Queryable = pool): Promise<boolean> {
+    const result = await db.query('DELETE FROM scheduled_tasks WHERE id = $1', [id])
+    return (result.rowCount ?? 0) > 0
+  }
+
   async update(id: string, task: TaskWrite, db: Queryable = pool): Promise<TaskRecord> {
     const result = await db.query<TaskRow>(
       `UPDATE scheduled_tasks SET
