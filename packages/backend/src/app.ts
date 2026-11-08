@@ -4,6 +4,8 @@ import { config } from './config'
 import { errorHandler, notFoundHandler } from './http'
 import { createAuthRouter } from './modules/auth/auth.controller'
 import { csrfProtection, loadSession, noStore, originCheck, requireAuth } from './modules/auth/auth.middleware'
+import { createPricesRouter } from './modules/prices/prices.controller'
+import { PriceTools } from './modules/prices/prices.tools'
 import { createRadarRouter } from './modules/radar/radar.controller'
 import { createSchedulerRouter } from './modules/scheduler/scheduler.controller'
 import type { SchedulerService } from './modules/scheduler/scheduler.service'
@@ -35,6 +37,7 @@ export function createApp(scheduler: SchedulerService): express.Express {
   app.use('/api', requireAuth, csrfProtection)
   app.use('/api/scheduler', createSchedulerRouter(scheduler))
   app.use('/api/radar', createRadarRouter())
+  app.use('/api/prices', createPricesRouter(new PriceTools()))
 
   app.use(notFoundHandler)
   app.use(errorHandler)

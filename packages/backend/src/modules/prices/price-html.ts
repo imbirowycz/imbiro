@@ -68,6 +68,8 @@ const BLOCK_MARKERS: RegExp[] = [
 /** True, gdy odpowiedź wygląda na blokadę antybotową (a nie stronę produktu). */
 export function looksBlocked(status: number, html: string): boolean {
   if (status === 403 || status === 429 || status === 503) return true
+  // Amazon i podobne: 202 z krótką stroną weryfikacji zamiast treści.
+  if (status === 202 && html.length < 20_000) return true
   // Prawdziwa strona produktu jest zwykle duża; blokady są krótkie i mają charakterystyczne znaczniki.
   const sample = html.length > 400_000 ? html.slice(0, 400_000) : html
   return BLOCK_MARKERS.some((re) => re.test(sample)) && html.length < 200_000

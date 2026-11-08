@@ -109,6 +109,20 @@ export const config = {
     maxPerLogin: int('LOGIN_MAX_FAILURES_PER_LOGIN', 50, 1),
   },
 
+  // Łowca cen: pobieranie stron sklepów.
+  prices: {
+    // Serwis przeglądarki (kontener `browser`); bez niego działa tylko pobieranie http.
+    browserUrl: process.env.PRICE_BROWSER_URL?.replace(/\/$/, '') || undefined,
+    browserToken: process.env.PRICE_BROWSER_TOKEN || undefined,
+    userAgent:
+      process.env.PRICE_USER_AGENT ||
+      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36',
+    // Limit czasu jednego pobrania (http albo przeglądarka).
+    fetchTimeoutSeconds: int('PRICE_FETCH_TIMEOUT_SECONDS', 45, 5),
+    // Minimalny odstęp między zapytaniami do jednej domeny w workerze.
+    domainGapSeconds: int('PRICE_DOMAIN_GAP_SECONDS', 30, 0),
+  },
+
   // Integracje akcji są opcjonalne: brak konfiguracji = czytelny błąd przy wykonaniu akcji.
   integrations: {
     smtp: process.env.SMTP_HOST

@@ -74,6 +74,7 @@ test('cleanHtmlForPrompt strips scripts and comments but keeps JSON-LD separatel
 
 test('looksBlocked', () => {
   assert.equal(looksBlocked(403, ''), true)
+  assert.equal(looksBlocked(202, '<html>verify</html>'), true)
   assert.equal(looksBlocked(200, '<title>Just a moment...</title><div id="challenge-platform"></div>'), true)
   assert.equal(looksBlocked(200, fixture('css.html')), false)
 })
