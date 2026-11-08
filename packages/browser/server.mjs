@@ -1,3 +1,4 @@
+import fs from 'node:fs'
 import { createServer } from 'node:http'
 import os from 'node:os'
 import path from 'node:path'
@@ -24,8 +25,20 @@ const CHALLENGE_STATUSES = new Set([202, 403, 429, 503])
 
 let contextPromise = null
 
+// Chromium blokuje profil plikami Singleton*, które zostają po zatrzymaniu kontenera. Nowy
+// kontener ma inną nazwę hosta, więc Chromium uznaje profil za „zajęty na innym komputerze”
+// i nie startuje. Profil należy wyłącznie do tego serwisu — bezpiecznie je usuwamy.
+function clearProfileLocks() {
+  for (const name of ['SingletonLock', 'SingletonCookie', 'SingletonSocket']) {
+    try {
+      fs.rmSync(path.join(PROFILE_DIR, name), { force: true })
+    } catch {}
+  }
+}
+
 async function getContext() {
   if (!contextPromise) {
+    clearProfileLocks()
     contextPromise = chromium
       .launchPersistentContext(PROFILE_DIR, {
         // BROWSER_HEADLESS=false: widoczne okno (np. przyszły agent na domowym komputerze).
