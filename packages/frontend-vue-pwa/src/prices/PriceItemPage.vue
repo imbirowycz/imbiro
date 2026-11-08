@@ -376,6 +376,9 @@ legend {
   gap: 0.35rem;
   font-size: 0.9rem;
   min-width: 0;
+}
+/* Rozciąganie tylko w wierszu — w kolumnie flex-basis działałby jak wysokość pola. */
+.row > .field {
   flex: 1 1 12rem;
 }
 .field > span em {

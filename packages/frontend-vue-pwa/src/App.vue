@@ -102,6 +102,21 @@ textarea {
 textarea {
   resize: vertical;
 }
+/* Własna strzałka z odstępem od krawędzi (natywna przylegała do prawej strony pola). */
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 2.4rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%238e9bb3' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.85rem center;
+  background-size: 0.75rem auto;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+select::-ms-expand {
+  display: none;
+}
 input[aria-invalid='true'],
 select[aria-invalid='true'],
 textarea[aria-invalid='true'] {
