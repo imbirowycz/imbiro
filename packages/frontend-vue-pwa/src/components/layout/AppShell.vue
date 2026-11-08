@@ -56,7 +56,7 @@ const nav = [
 ] as const
 // The reader is part of Home (opened from the dashboard).
 const isActive = (name: string) =>
-  route.name === name || (name === 'home' && route.name === 'read') || (name === 'prices' && route.name === 'price-item')
+  route.name === name || (name === 'home' && route.name === 'read') || (name === 'prices' && (route.name === 'price-item' || route.name === 'price-new'))
 </script>
 
 <template>

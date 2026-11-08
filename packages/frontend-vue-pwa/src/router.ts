@@ -25,6 +25,19 @@ export const router = createRouter({
       meta: { title: 'Łowca cen' },
     },
     {
+      // Osobny rekord trasy: przejście z edycji do „nowego” montuje formularz od nowa.
+      path: '/ceny/nowy',
+      name: 'price-new',
+      component: () => import('./prices/PriceItemPage.vue'),
+      meta: { title: 'Nowy artykuł' },
+    },
+    {
+      path: '/ceny/:id',
+      name: 'price-item',
+      component: () => import('./prices/PriceItemPage.vue'),
+      meta: { title: 'Artykuł' },
+    },
+    {
       path: '/scheduler/:taskId?',
       name: 'scheduler',
       component: () => import('./components/SchedulerPage.vue'),
