@@ -14,8 +14,10 @@ export default defineConfig({
       workbox: {
         // API nigdy nie jest obsługiwane z cache service workera.
         navigateFallbackDenylist: [/^\/api\//],
+        // Obsługa kliknięcia w powiadomienie o okazji.
+        importScripts: ["sw-notify.js"],
       },
-      includeAssets: ["icon.svg", "apple-touch-icon.png"],
+      includeAssets: ["icon.svg", "apple-touch-icon.png", "sw-notify.js"],
       manifest: {
         name: "imbiro",
         short_name: "imbiro",

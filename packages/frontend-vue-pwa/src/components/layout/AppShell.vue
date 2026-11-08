@@ -2,6 +2,7 @@
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import type { AdminUser } from '@myorg/shared'
+import { checkNewOffers } from '../../prices/alerts'
 import { refreshUnread, unreadOffers } from '../../prices/unread'
 
 defineProps<{ user: AdminUser }>()
@@ -46,15 +47,25 @@ function closeDrawer() {
 function onKeydown(event: KeyboardEvent) {
   if (event.key === 'Escape') closeDrawer()
 }
-// Licznik nieprzeczytanych okazji w menu: przy starcie, przy zmianie strony i co minutę.
+// Licznik nieprzeczytanych okazji w menu i powiadomienia o nowych: przy starcie, przy zmianie
+// strony, po powrocie do aplikacji i co 30 sekund.
 let unreadTimer: ReturnType<typeof setInterval> | undefined
+async function pollOffers() {
+  await checkNewOffers()
+  await refreshUnread()
+}
+function onVisible() {
+  if (document.visibilityState === 'visible') void pollOffers()
+}
 onMounted(() => {
   document.addEventListener('keydown', onKeydown)
-  void refreshUnread()
-  unreadTimer = setInterval(refreshUnread, 60_000)
+  document.addEventListener('visibilitychange', onVisible)
+  void pollOffers()
+  unreadTimer = setInterval(pollOffers, 30_000)
 })
 onBeforeUnmount(() => {
   document.removeEventListener('keydown', onKeydown)
+  document.removeEventListener('visibilitychange', onVisible)
   clearInterval(unreadTimer)
 })
 watch(

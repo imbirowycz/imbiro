@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router'
 import type { PriceItem, PriceOffer } from '@myorg/shared'
 import { pricesApi } from '../api/prices'
 import { KIND_LABELS, money, shortDate } from './format'
+import { alertsEnabled, disableAlerts, enableAlerts, notificationPermission, testAlert } from './alerts'
 import { refreshUnread } from './unread'
 import './prices.css'
 
@@ -152,6 +153,31 @@ function open(offer: PriceOffer) {
   if (!offer.readAt) void markRead([offer.id])
 }
 
+const alertBusy = ref(false)
+async function toggleAlerts() {
+  if (alertsEnabled.value) {
+    disableAlerts()
+    return
+  }
+  alertBusy.value = true
+  try {
+    const permission = await enableAlerts()
+    await testAlert()
+    notice.value =
+      permission === 'granted'
+        ? { text: 'Włączone: przy nowej okazji usłyszysz sygnał i zobaczysz powiadomienie (gdy aplikacja jest otwarta).', kind: 'ok' }
+        : {
+            text:
+              permission === 'unsupported'
+                ? 'Ta przeglądarka nie obsługuje powiadomień — zostaje sam dźwięk. Na iPhonie dodaj aplikację do ekranu głównego.'
+                : 'Bez zgody na powiadomienia zostaje sam dźwięk. Zgodę włączysz w ustawieniach strony w przeglądarce.',
+            kind: 'error',
+          }
+  } finally {
+    alertBusy.value = false
+  }
+}
+
 const differs = (o: PriceOffer) => o.currentPrice !== null && Math.abs(o.currentPrice - o.price) >= 0.01
 
 onMounted(async () => {
@@ -179,6 +205,20 @@ onMounted(async () => {
       {{ notice.text }}
       <button type="button" class="icon-button" aria-label="Ukryj komunikat" @click="notice = null">✕</button>
     </p>
+
+    <div class="pr-card alerts">
+      <label class="pr-check">
+        <input type="checkbox" :checked="alertsEnabled" :disabled="alertBusy" @change="toggleAlerts" />
+        <strong>Powiadomienia i dźwięk na tym urządzeniu</strong>
+      </label>
+      <span class="pr-muted">
+        <template v-if="alertsEnabled">
+          Włączone{{ notificationPermission === 'granted' ? '' : ' (tylko dźwięk — brak zgody na powiadomienia)' }} · działa, gdy aplikacja jest otwarta.
+        </template>
+        <template v-else>Sygnał i powiadomienie przy każdej nowej okazji, gdy aplikacja jest otwarta. Przy zamkniętej — użyj Telegrama.</template>
+      </span>
+      <button v-if="alertsEnabled" type="button" class="button ghost pr-small-button" @click="testAlert">Testuj</button>
+    </div>
 
     <div class="pr-filters">
       <input v-model="filters.q" class="pr-search" type="search" placeholder="Szukaj (tytuł, artykuł, sklep)…" aria-label="Szukaj" />
@@ -251,6 +291,17 @@ onMounted(async () => {
 </template>
 
 <style scoped>
+.alerts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  margin-bottom: 1rem;
+  padding: 0.7rem 1rem;
+}
+.alerts .pr-muted {
+  flex: 1 1 16rem;
+}
 .group {
   display: flex;
   flex-direction: column;
