@@ -31,6 +31,7 @@ services:
       # Lokalnie bez HTTPS; frontend z kontenera woła API pod innym portem.
       SESSION_COOKIE_SECURE: "false"
       CORS_ORIGINS: http://localhost:5173
+      PRICE_BROWSER_URL: http://browser:3100
     depends_on:
       postgres:
         condition: service_healthy
@@ -44,11 +45,23 @@ services:
     environment:
       DATABASE_URL: postgres://user:password@postgres:5432/app
       WORKER_CONCURRENCY: "2"
+      PRICE_BROWSER_URL: http://browser:3100
     # Dłużej niż WORKER_SHUTDOWN_TIMEOUT_SECONDS (domyślnie 30), żeby graceful stop zdążył.
     stop_grace_period: 40s
     depends_on:
       postgres:
         condition: service_healthy
+
+  # Łowca cen: prawdziwa przeglądarka (Chromium) do stron, które blokują zwykłe zapytania.
+  browser:
+    build:
+      context: .
+      dockerfile: packages/browser/Dockerfile
+    restart: unless-stopped
+    shm_size: 512m
+    mem_limit: 1g
+    volumes:
+      - browser_profile:/data
 
   frontend:
     build:
@@ -63,3 +76,4 @@ services:
 
 volumes:
   postgres_data:
+  browser_profile:

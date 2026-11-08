@@ -6,12 +6,13 @@
   ],
   "scripts": {
     "up": "docker compose up -d postgres && wait-on tcp:127.0.0.1:5432 -t 120000 && npm run dev",
-    "down": "kill-port 3000 5173 && docker compose down --remove-orphans",
-    "dev": "cross-env DATABASE_URL=postgres://user:password@localhost:5432/app concurrently -n backend,worker,fe -c blue,magenta,green \"npm run dev --workspace=@myorg/backend\" \"npm run dev:worker --workspace=@myorg/backend\" \"npm run dev --workspace=@myorg/frontend-vue-pwa\"",
+    "down": "kill-port 3000 3100 5173 && docker compose down --remove-orphans",
+    "dev": "cross-env DATABASE_URL=postgres://user:password@localhost:5432/app PRICE_BROWSER_URL=http://localhost:3100 concurrently -n backend,worker,fe,browser -c blue,magenta,green,yellow \"npm run dev --workspace=@myorg/backend\" \"npm run dev:worker --workspace=@myorg/backend\" \"npm run dev --workspace=@myorg/frontend-vue-pwa\" \"npm run dev --workspace=@myorg/browser\"",
     "build": "npm run build --workspace=@myorg/shared && npm run build --workspace=@myorg/backend && npm run build --workspace=@myorg/frontend-vue-pwa",
     "docker:up": "docker compose up -d --build",
     "docker:down": "docker compose down",
-    "deploy": "npm run build && ./deploy.sh"
+    "deploy": "npm run build && ./deploy.sh",
+    "browser:install": "npm run install-browser --workspace=@myorg/browser"
   },
   "devDependencies": {
     "concurrently": "^9.1.2",
