@@ -1,5 +1,8 @@
 import { Router, type Response } from 'express'
 import { asyncHandler } from '../../http'
+import { AppError } from '../../errors'
+import type { PriceNotifier } from './price-notify'
+import { notificationTestSchema, parseInput } from './prices.schemas'
 import type { PricesService } from './prices.service'
 import type { PriceTools } from './prices.tools'
 
@@ -14,8 +17,22 @@ export function requestSignal(res: Response): AbortSignal {
   return controller.signal
 }
 
-export function createPricesRouter(service: PricesService, tools: PriceTools): Router {
+export function createPricesRouter(service: PricesService, tools: PriceTools, notifier: PriceNotifier): Router {
   const router = Router()
+
+  // Wiadomość testowa z formularza — sprawdzenie adresu e-mail / chat id przed zapisem.
+  router.post(
+    '/notifications/test',
+    asyncHandler(async (req, res) => {
+      const target = parseInput(notificationTestSchema, req.body)
+      try {
+        await notifier.sendTest(target)
+      } catch (err) {
+        throw new AppError(`Nie udało się wysłać: ${(err as Error).message}`, 502)
+      }
+      res.json({ ok: true })
+    })
+  )
 
   router.get(
     '/items',

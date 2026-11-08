@@ -5,6 +5,7 @@ import { errorHandler, notFoundHandler } from './http'
 import { createAuthRouter } from './modules/auth/auth.controller'
 import { csrfProtection, loadSession, noStore, originCheck, requireAuth } from './modules/auth/auth.middleware'
 import { createPricesRouter } from './modules/prices/prices.controller'
+import { PriceNotifier } from './modules/prices/price-notify'
 import { PricesService } from './modules/prices/prices.service'
 import { PriceTools } from './modules/prices/prices.tools'
 import { createRadarRouter } from './modules/radar/radar.controller'
@@ -39,7 +40,7 @@ export function createApp(scheduler: SchedulerService): express.Express {
   app.use('/api/scheduler', createSchedulerRouter(scheduler))
   app.use('/api/radar', createRadarRouter())
   const prices = new PricesService(scheduler)
-  app.use('/api/prices', createPricesRouter(prices, new PriceTools((id) => prices.repairContext(id))))
+  app.use('/api/prices', createPricesRouter(prices, new PriceTools((id) => prices.repairContext(id)), new PriceNotifier()))
 
   app.use(notFoundHandler)
   app.use(errorHandler)
