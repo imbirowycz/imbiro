@@ -1,0 +1,156 @@
+/* Wspólne style modułu Łowca cen (klasy z prefiksem pr-). */
+.pr-shell {
+  max-width: 64rem;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 3rem;
+}
+.pr-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 1.25rem;
+}
+.pr-top h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 2.25rem;
+  font-weight: 600;
+  line-height: 1;
+}
+.pr-lede {
+  margin: 0.35rem 0 0;
+  color: var(--muted);
+}
+.pr-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+.pr-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 0 0 1rem;
+  padding: 0.5rem 0.5rem 0.5rem 0.9rem;
+  border-radius: 8px;
+  background: rgb(92 200 164 / 0.12);
+  color: var(--ok);
+}
+.pr-notice.error {
+  background: rgb(240 119 106 / 0.12);
+  color: var(--fail);
+}
+.pr-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-bottom: 1.25rem;
+}
+.pr-filters > * {
+  flex: 1 1 10rem;
+  width: auto;
+}
+.pr-filters .pr-search {
+  flex: 3 1 16rem;
+}
+.pr-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+.pr-check input {
+  width: auto;
+}
+.pr-card {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  padding: 1rem 1.1rem;
+}
+.pr-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.pr-empty {
+  padding: 2rem 0;
+  max-width: 34rem;
+}
+.pr-empty h2 {
+  margin: 0 0 0.5rem;
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  font-weight: 600;
+}
+.pr-empty p {
+  margin: 0 0 1.25rem;
+  color: var(--muted);
+}
+.pr-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  white-space: nowrap;
+  border: 1px solid currentColor;
+}
+.pr-badge.ok {
+  color: var(--ok);
+}
+.pr-badge.untested {
+  color: var(--muted);
+}
+.pr-badge.warning {
+  color: var(--signal);
+}
+.pr-badge.failing,
+.pr-badge.blocked {
+  color: var(--fail);
+}
+.pr-price {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  font-weight: 600;
+  color: var(--signal);
+  line-height: 1.1;
+}
+.pr-drop {
+  color: var(--ok);
+  font-weight: 600;
+}
+.pr-muted {
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+.pr-error-text {
+  color: var(--fail);
+  font-size: 0.85rem;
+}
+.pr-link {
+  color: var(--signal);
+}
+.pr-small-button {
+  padding: 0.35rem 0.7rem;
+  font-size: 0.88rem;
+}
+.button.danger {
+  border-color: var(--fail);
+  color: var(--fail);
+  background: none;
+}
+@media (max-width: 40rem) {
+  .pr-top h1 {
+    font-size: 1.9rem;
+  }
+}

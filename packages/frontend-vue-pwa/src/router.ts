@@ -19,6 +19,12 @@ export const router = createRouter({
       meta: { title: 'Czytanie' },
     },
     {
+      path: '/ceny',
+      name: 'prices',
+      component: () => import('./prices/PricesPage.vue'),
+      meta: { title: 'Łowca cen' },
+    },
+    {
       path: '/scheduler/:taskId?',
       name: 'scheduler',
       component: () => import('./components/SchedulerPage.vue'),

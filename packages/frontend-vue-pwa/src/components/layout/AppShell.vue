@@ -51,10 +51,12 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
 const nav = [
   { to: '/', name: 'home', label: 'Home', icon: 'radar' },
   { to: '/weather', name: 'weather', label: 'Pogoda i finanse', icon: 'weather' },
+  { to: '/ceny', name: 'prices', label: 'Łowca cen', icon: 'tag' },
   { to: '/scheduler', name: 'scheduler', label: 'Scheduler', icon: 'clock' },
 ] as const
 // The reader is part of Home (opened from the dashboard).
-const isActive = (name: string) => route.name === name || (name === 'home' && route.name === 'read')
+const isActive = (name: string) =>
+  route.name === name || (name === 'home' && route.name === 'read') || (name === 'prices' && route.name === 'price-item')
 </script>
 
 <template>
@@ -108,6 +110,9 @@ const isActive = (name: string) => route.name === name || (name === 'home' && ro
             <svg v-else-if="item.icon === 'weather'" viewBox="0 0 24 24" aria-hidden="true">
               <circle cx="9" cy="9" r="3.5" /><path d="M9 2.5v1.5M2.5 9H4M4.4 4.4l1.1 1.1M13.6 4.4l-1.1 1.1" />
               <path d="M8 19.5h9a3.5 3.5 0 0 0 0-7 5 5 0 0 0-9.6 1.5A2.75 2.75 0 0 0 8 19.5z" />
+            </svg>
+            <svg v-else-if="item.icon === 'tag'" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M3.5 12.5V4.5a1 1 0 0 1 1-1h8l8 8-9 9-8-8z" /><circle cx="8.5" cy="8.5" r="1.5" />
             </svg>
             <svg v-else viewBox="0 0 24 24" aria-hidden="true">
               <circle cx="12" cy="12" r="8.5" /><path d="M12 7.5V12l3 2" />
