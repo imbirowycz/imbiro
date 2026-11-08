@@ -42,6 +42,15 @@ export interface PageFetcher {
 const MAX_BYTES = 6 * 1024 * 1024
 const MAX_REDIRECTS = 5
 
+/** Przekierowanie na stronę captchy (np. ceneo.pl/Captcha/Add) to blokada, nie strona produktu. */
+export function isCaptchaUrl(url: string): boolean {
+  try {
+    return /captcha|challenge|\/blocked|access-denied/i.test(new URL(url).pathname)
+  } catch {
+    return false
+  }
+}
+
 export function assertFetchableUrl(raw: string): URL {
   let url: URL
   try {
@@ -124,7 +133,7 @@ export function createHttpFetcher(fetchImpl: typeof fetch = createGuardedFetch()
         const contentType = response.headers.get('content-type') ?? ''
         const bytes = await readCapped(response, MAX_BYTES, signal)
         const html = decodeBody(bytes, contentType)
-        if (looksBlocked(response.status, html)) {
+        if (looksBlocked(response.status, html) || isCaptchaUrl(url.toString())) {
           throw new PriceFetchError('BLOCKED', `Sklep zablokował zapytanie (HTTP ${response.status})`, response.status)
         }
         if (!response.ok) {
@@ -173,7 +182,7 @@ export function createBrowserFetcher(
         throw new PriceFetchError(code, body.error?.message ?? `Serwis przeglądarki zwrócił ${response.status}`, body.status ?? null)
       }
       const status = body.status ?? 200
-      if (looksBlocked(status, body.html)) {
+      if (looksBlocked(status, body.html) || isCaptchaUrl(body.finalUrl ?? rawUrl)) {
         throw new PriceFetchError('BLOCKED', `Sklep zablokował przeglądarkę (HTTP ${status})`, status)
       }
       if (status >= 400) throw new PriceFetchError('HTTP_ERROR', `Sklep zwrócił błąd ${status}`, status, status >= 500)

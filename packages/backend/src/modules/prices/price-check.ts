@@ -66,6 +66,8 @@ export async function checkSource(params: CheckParams): Promise<CheckOutcome> {
         attempts.push({ fetcher: kind, ok: false, httpStatus: error.status, durationMs: Date.now() - attemptStarted, error: { code: error.code, message: error.message } })
       }
       if (!isLast) continue
+      // Pierwsza próba bez ceny, druga zablokowana: to blokada (sklep podaje automatom inną stronę).
+      if (last && error.code === 'BLOCKED') return { ...failure(attempts, started, error), page: last.page }
       return last ?? failure(attempts, started, error)
     }
 

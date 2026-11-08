@@ -69,3 +69,14 @@ test('preferred browser goes first', async () => {
   assert.deepEqual(calls, ['browser'])
   assert.equal(out.extraction?.price, 2)
 })
+
+test('auto: http without price + browser blocked → BLOCKED (not PRICE_NOT_FOUND)', async () => {
+  const fetchers: Fetchers = {
+    http: fake('http', () => '<html><title>Strona główna</title></html>'),
+    browser: fake('browser', () => new PriceFetchError('BLOCKED', 'captcha', 200)),
+  }
+  const out = await checkSource({ url: 'https://shop.pl/p', mode: 'auto', definition, fetchers })
+  assert.equal(out.ok, false)
+  assert.equal(out.error?.code, 'BLOCKED')
+  assert.ok(out.page, 'keeps the http page for the debug snapshot')
+})

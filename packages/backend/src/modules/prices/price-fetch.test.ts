@@ -36,3 +36,10 @@ test('http fetcher refuses redirect to a local address', async () => {
   const fetcher = createHttpFetcher(fetchImpl, 'UA')
   await assert.rejects(fetcher.fetch('https://shop.pl/a', { signal: new AbortController().signal }), (err: PriceFetchError) => err.code === 'BLOCKED_URL')
 })
+
+test('redirect to a captcha page is a block', async () => {
+  const fetchImpl = (async (url: string) =>
+    url.includes('/Captcha/') ? response(200, '<html>prove you are human</html>') : response(302, '', { location: '/Captcha/Add?ReturnUrl=%2F1' })) as unknown as typeof fetch
+  const fetcher = createHttpFetcher(fetchImpl, 'UA')
+  await assert.rejects(fetcher.fetch('https://www.ceneo.pl/1', { signal: new AbortController().signal }), (err: PriceFetchError) => err.code === 'BLOCKED')
+})
