@@ -27,6 +27,8 @@ const rows = computed(() =>
     .sort((a, b) => order(a.candidate) - order(b.candidate) || (priceOf(a.candidate) ?? Infinity) - (priceOf(b.candidate) ?? Infinity))
 )
 const priceOf = (c: PriceDiscoveryCandidate) => c.check?.extraction?.price ?? null
+/** Zablokowany sklep też można dodać — link do produktu wkleja się potem ze swojej przeglądarki. */
+const canAdd = (c: PriceDiscoveryCandidate) => !!c.url || ((c.status === 'blocked' || c.status === 'error') && !!c.searchUrl)
 
 async function search() {
   if (!props.item.name.trim()) {
@@ -92,7 +94,7 @@ void search()
       <ul class="rows">
         <li v-for="{ candidate: c, index } in rows" :key="index" :class="{ dim: c.status !== 'found' }">
           <label class="pick">
-            <input type="checkbox" :disabled="!c.url || c.status === 'not_found'" :checked="picked.has(index)" @change="toggle(index)" />
+            <input type="checkbox" :disabled="!canAdd(c)" :checked="picked.has(index)" @change="toggle(index)" />
             <span class="shop">{{ c.shop }}</span>
           </label>
           <span class="pr-badge" :class="STATUS[c.status].cls">{{ STATUS[c.status].label }}</span>
@@ -103,14 +105,18 @@ void search()
           <span class="detail">
             <a v-if="c.url" :href="c.url" target="_blank" rel="noopener noreferrer" class="pr-link url">{{ c.url.replace(/^https?:\/\/(www\.)?/, '') }}</a>
             <span v-if="c.message" class="pr-muted">{{ c.message }}</span>
+            <a v-if="!c.url && c.searchUrl && c.status !== 'not_found'" :href="c.searchUrl" target="_blank" rel="noopener noreferrer" class="pr-link">
+              Otwórz wyszukiwarkę sklepu ↗
+            </a>
             <span v-if="c.check?.ok" class="pr-muted">odczyt: {{ c.check.extraction?.strategyUsed }} przez {{ c.check.fetcher }}</span>
           </span>
         </li>
       </ul>
 
       <p class="pr-muted">
-        Sklepy „blokuje” chronią się przed automatami — można dodać je ręcznie z linkiem i trybem „Tylko przeglądarka”. „Znaleziono” bez ceny wymaga
-        definicji od AI (przycisk „Kopiuj prompt” na karcie źródła).
+        Sklepy „blokuje” odrzucają zapytania z tego serwera. Możesz je zaznaczyć i dodać: na karcie źródła otworzysz wyszukiwarkę sklepu u siebie i wkleisz
+        link do produktu. Źródło będzie sprawdzane według harmonogramu, a gdy sklep zdejmie blokadę, ceny zaczną się pojawiać. „Znaleziono” bez ceny
+        wymaga definicji od AI (przycisk „Kopiuj prompt” na karcie źródła).
       </p>
     </template>
 

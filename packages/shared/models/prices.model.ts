@@ -260,6 +260,8 @@ export interface PriceDiscoveryCandidate {
   via: 'ceneo' | 'search'
   /** Cena z listy ofert Ceneo (orientacyjnie). */
   ceneoPrice: number | null
+  /** Wyszukiwarka sklepu — do otwarcia we własnej przeglądarce, gdy sklep blokuje serwer. */
+  searchUrl: string | null
   /** Wynik sprawdzenia znalezionej strony (tryb auto). */
   check: PriceSourceTestResult | null
   message: string | null

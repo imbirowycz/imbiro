@@ -11,6 +11,8 @@ export interface SourceDraft {
   lastError?: string | null
   lastPrice?: number | null
   test: PriceSourceTestResult | null
+  /** Z „Znajdź źródła”, gdy sklep blokuje serwer: wyszukiwarka sklepu do otwarcia u siebie. */
+  searchUrl?: string | null
 }
 
 let counter = 0

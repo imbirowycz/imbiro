@@ -164,10 +164,17 @@ export async function discoverSources(params: DiscoverParams): Promise<PriceDisc
   // 1) Ceneo
   let ceneoUrl: string | null = null
   let offers: CeneoOffer[] = []
+  const ceneoSearch = `https://www.ceneo.pl/;szukaj-${encodeURIComponent(query).replace(/%20/g, '+')}`
   try {
-    const search = await fetchPage(`https://www.ceneo.pl/;szukaj-${encodeURIComponent(query).replace(/%20/g, '+')}`, 'auto', signal, fetchers)
-    // Ceneo czasem przekierowuje od razu na produkt.
-    const ids = /ceneo\.pl\/(\d{6,})/.test(search.finalUrl) ? [/ceneo\.pl\/(\d{6,})/.exec(search.finalUrl)![1]] : ceneoProductIds(search.html)
+    let search = await fetchPage(ceneoSearch, 'auto', signal, fetchers)
+    const idsOf = (page: FetchedPage) =>
+      /ceneo\.pl\/(\d{6,})/.test(page.finalUrl) ? [/ceneo\.pl\/(\d{6,})/.exec(page.finalUrl)![1]] : ceneoProductIds(page.html)
+    let ids = idsOf(search)
+    // Ceneo podaje automatom ogólną stronę bez wyników — sprawdź przeglądarką (blokada wyjdzie jako BLOCKED).
+    if (ids.length === 0 && search.fetcher === 'http') {
+      search = await fetchers.browser.fetch(ceneoSearch, { signal })
+      ids = idsOf(search)
+    }
     for (const id of ids.slice(0, 4)) {
       const page = id && search.finalUrl.includes(`/${id}`) ? search : await fetchPage(`https://www.ceneo.pl/${id}`, 'auto', signal, fetchers)
       const doc = parseHtml(page.html, page.finalUrl)
@@ -179,6 +186,7 @@ export async function discoverSources(params: DiscoverParams): Promise<PriceDisc
         candidates.push({
           shop: 'Ceneo (najniższa z porównywarki)',
           url: ceneoUrl,
+          searchUrl: ceneoSearch,
           status: 'found',
           via: 'ceneo',
           ceneoPrice: structured.price,
@@ -188,9 +196,24 @@ export async function discoverSources(params: DiscoverParams): Promise<PriceDisc
       }
       break
     }
+    if (!ceneoUrl) {
+      candidates.push({ shop: 'Ceneo', url: null, searchUrl: ceneoSearch, status: 'not_found', via: 'ceneo', ceneoPrice: null, check: null, message: 'Ceneo nie ma tego produktu' })
+    }
   } catch (err) {
     if (params.signal?.aborted) throw err
-    candidates.push({ shop: 'Ceneo', url: null, status: 'error', via: 'ceneo', ceneoPrice: null, check: null, message: toFetchError(err, signal).message })
+    const error = toFetchError(err, signal)
+    // BROWSER_UNAVAILABLE po pustej stronie http = Ceneo nie dało wyników automatowi.
+    const blocked = error.code === 'BLOCKED'
+    candidates.push({
+      shop: 'Ceneo',
+      url: null,
+      searchUrl: ceneoSearch,
+      status: blocked ? 'blocked' : 'error',
+      via: 'ceneo',
+      ceneoPrice: null,
+      check: null,
+      message: blocked ? 'Ceneo blokuje ten serwer (captcha) — lista sklepów z Ceneo niedostępna' : error.message,
+    })
   }
 
   // 2) Sklepy: najpierw z Ceneo (od najtańszego), potem popularne.
@@ -208,7 +231,7 @@ export async function discoverSources(params: DiscoverParams): Promise<PriceDisc
   }
   await Promise.all(Array.from({ length: CONCURRENCY }, worker))
   for (const [i, offer] of queue.entries()) {
-    candidates.push(results[i] ?? { shop: offer.shop, url: null, status: 'error', via: 'search', ceneoPrice: offer.price, check: null, message: 'Przerwano: limit czasu wyszukiwania' })
+    candidates.push(results[i] ?? { shop: offer.shop, url: null, searchUrl: knownSearchUrl(offer.shop, query), status: 'error', via: 'search', ceneoPrice: offer.price, check: null, message: 'Przerwano: limit czasu wyszukiwania' })
   }
 
   return { query, ceneoUrl, candidates, durationMs: Date.now() - started, timedOut: deadline.aborted }
@@ -222,11 +245,12 @@ async function findInShop(
   signal: AbortSignal,
   fetchers: Fetchers
 ): Promise<PriceDiscoveryCandidate> {
-  const base = { shop: offer.shop, via: 'search' as const, ceneoPrice: offer.price }
+  const base = { shop: offer.shop, via: 'search' as const, ceneoPrice: offer.price, searchUrl: knownSearchUrl(offer.shop, query) }
   if (!token) return { ...base, url: null, status: 'not_found', check: null, message: 'Brak kodu modelu w nazwie — nie da się wiarygodnie wskazać produktu' }
   try {
     const searchUrl = await resolveSearchUrl(offer.shop, query, signal, fetchers)
     if (!searchUrl) return { ...base, url: null, status: 'not_found', check: null, message: 'Nie znaleziono wyszukiwarki sklepu' }
+    base.searchUrl = searchUrl
     const page = await fetchPage(searchUrl, 'auto', signal, fetchers)
     const url = pickProductLink(page.html, page.finalUrl, offer.shop, token)
     if (!url) return { ...base, url: null, status: 'not_found', check: null, message: 'Wyszukiwarka sklepu nie zwróciła tego modelu' }
@@ -239,8 +263,21 @@ async function findInShop(
     return { ...base, url, status: 'found', check, message: check.ok ? null : 'Strona znaleziona, ale bez ceny w danych strukturalnych — potrzebna definicja od AI' }
   } catch (err) {
     const error = toFetchError(err, signal)
-    return { ...base, url: null, status: error.code === 'BLOCKED' ? 'blocked' : 'error', check: null, message: error.message }
+    const blocked = error.code === 'BLOCKED'
+    return {
+      ...base,
+      url: null,
+      status: blocked ? 'blocked' : 'error',
+      check: null,
+      message: blocked ? 'Sklep blokuje ten serwer — dodaj źródło i wklej link do produktu ze swojej przeglądarki' : error.message,
+    }
   }
+}
+
+/** Adres wyszukiwarki bez pobierania czegokolwiek (znane sklepy), inaczej strona główna. */
+function knownSearchUrl(shop: string, query: string): string {
+  const known = Object.entries(SEARCH_URLS).find(([host]) => sameShop(shop, host))
+  return known ? known[1](encodeURIComponent(query)) : `https://${shop}/`
 }
 
 async function resolveSearchUrl(shop: string, query: string, signal: AbortSignal, fetchers: Fetchers): Promise<string | null> {

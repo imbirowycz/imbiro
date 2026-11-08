@@ -158,6 +158,14 @@ const show = (value: unknown, field: string) => {
     <p v-if="source.status && source.status !== 'ok' && source.lastError" class="pr-error-text">Ostatni błąd: {{ source.lastError }}</p>
     <PriceHistory v-if="source.id" :source-id="source.id" />
 
+    <p v-if="!source.url.trim() && source.searchUrl" class="pr-notice blocked-hint">
+      <span>
+        Ten sklep blokuje wyszukiwanie z serwera.
+        <a :href="source.searchUrl" target="_blank" rel="noopener noreferrer" class="pr-link">Otwórz wyszukiwarkę sklepu ↗</a>,
+        znajdź produkt i wklej jego link poniżej.
+      </span>
+    </p>
+
     <div class="grid">
       <label class="field">
         <span>Sklep</span>
@@ -269,6 +277,11 @@ const show = (value: unknown, field: string) => {
 </template>
 
 <style scoped>
+.blocked-hint {
+  margin: 0;
+  background: rgb(242 181 68 / 0.12);
+  color: var(--signal);
+}
 .source-card {
   display: flex;
   flex-direction: column;

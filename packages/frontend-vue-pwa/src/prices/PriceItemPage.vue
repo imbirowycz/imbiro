@@ -88,8 +88,16 @@ function addDiscovered(candidates: PriceDiscoveryCandidate[]) {
   // Pusta karta startowa nie jest potrzebna, gdy przychodzą gotowe źródła.
   sources.value = sources.value.filter((s) => s.id || s.url.trim() || s.definitionText.trim() || s.label.trim())
   for (const c of candidates) {
-    if (!c.url || existingUrls.value.includes(c.url)) continue
-    sources.value.push({ ...newDraft(), label: c.via === 'ceneo' ? 'Ceneo' : c.shop, url: c.url, test: c.check })
+    if (c.url && existingUrls.value.includes(c.url)) continue
+    sources.value.push({
+      ...newDraft(),
+      label: c.via === 'ceneo' ? 'Ceneo' : c.shop,
+      url: c.url ?? '',
+      // Sklep blokuje zwykłe zapytania — od razu przeglądarka.
+      fetchMode: c.status === 'blocked' ? 'browser' : 'auto',
+      test: c.check,
+      searchUrl: c.url ? null : c.searchUrl,
+    })
   }
   discovering.value = false
 }
