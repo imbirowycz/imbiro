@@ -32,13 +32,15 @@ describe('db.cleanup', () => {
     const { action, queries } = setup()
     const result = await action.execute(context, action.validateConfig({}))
     assert.deepEqual(result, {
-      deleted: { radar_read_items: 5, admin_sessions: 2, login_attempts: 3, task_executions: 7 },
-      total: 17,
+      deleted: { radar_read_items: 5, admin_sessions: 2, login_attempts: 3, task_executions: 7, price_observations: 7 },
+      total: 24,
     })
     // Only finished runs older than the default 90 days, never the current execution.
-    assert.equal(queries.length, 1)
+    assert.equal(queries.length, 2)
     assert.match(queries[0].sql, /status IN \('succeeded', 'failed'\)/)
     assert.deepEqual(queries[0].params, [90, context.executionId])
+    // Łowca cen: nieudane pomiary po 30 dniach, wszystkie po roku.
+    assert.match(queries[1].sql, /DELETE FROM price_observations/)
   })
 
   it('runs only the selected targets', async () => {

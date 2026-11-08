@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import type { PriceFetchMode } from '@myorg/shared'
 import { pricesApi } from '../api/prices'
 import { ERROR_HINTS, FETCH_MODE_LABELS, money, STATUS_LABELS } from './format'
+import PriceHistory from './PriceHistory.vue'
 import { AUTO_DEFINITION, parseDefinition, REFUSAL_HINTS, type SourceDraft } from './source-draft'
 
 const props = defineProps<{
@@ -155,6 +156,7 @@ const show = (value: unknown, field: string) => {
     </header>
 
     <p v-if="source.status && source.status !== 'ok' && source.lastError" class="pr-error-text">Ostatni błąd: {{ source.lastError }}</p>
+    <PriceHistory v-if="source.id" :source-id="source.id" />
 
     <div class="grid">
       <label class="field">

@@ -10,7 +10,7 @@ import type { ActionHandler } from './action.types'
 // which targets run (never a table name or SQL), so a task cannot delete anything else.
 // The rules are the same ones the app already applies on the fly (e.g. on login), reused from there.
 
-export const CLEANUP_TARGETS = ['radar_read_items', 'admin_sessions', 'login_attempts', 'task_executions'] as const
+export const CLEANUP_TARGETS = ['radar_read_items', 'admin_sessions', 'login_attempts', 'task_executions', 'price_observations'] as const
 export type CleanupTarget = (typeof CLEANUP_TARGETS)[number]
 
 const configSchema = z.strictObject({
@@ -56,11 +56,20 @@ export function createDbCleanupAction(deps: DbCleanupDeps = {}): ActionHandler<D
       )
       return result.rowCount ?? 0
     },
+    // Łowca cen: nieudane pomiary po 30 dniach, udane po roku (historia do wykresu zostaje).
+    price_observations: async () => {
+      const result = await db().query(
+        `DELETE FROM price_observations
+          WHERE (NOT ok AND checked_at < NOW() - INTERVAL '30 days')
+             OR checked_at < NOW() - INTERVAL '365 days'`
+      )
+      return result.rowCount ?? 0
+    },
   }
 
   return {
     type: 'db.cleanup',
-    description: 'Czyści bazę: wygasłe oznaczenia radaru i sesje, stare próby logowania i historię wykonań',
+    description: 'Czyści bazę: wygasłe oznaczenia radaru i sesje, stare próby logowania, historię wykonań i stare pomiary cen',
     validateConfig: (raw) => parseWith(configSchema, raw ?? {}),
 
     async execute(context, cfg) {

@@ -1,6 +1,6 @@
 # Łowca cen: zadanie do wykonania
 
-Status: **do zrobienia** · utworzono 2026-11-08
+Status: **zaimplementowane na branchu `feature/ceny`** (kroki 1–12) · utworzono 2026-11-08
 
 Moduł obserwuje wybrane artykuły (np. konkretny model kawiarki) w wielu sklepach. Działa
 według harmonogramu, zapisuje historię cen, a gdy cena spadnie albo pojawi się promocja,
@@ -222,46 +222,49 @@ Walidacja wejścia schematami zod ze `shared`, tymi samymi, których używa form
 
 ## 9. Kroki implementacji
 
+> Stan na 2026-11-08: wszystkie kroki zrobione. Różnice względem planu i wyniki rozpoznania są w sekcji
+> „Realizacja” na końcu dokumentu.
+
 Każdy krok to osobny commit (lub PR) z testami (`tsx --test`). Kolejność daje działający
 fragment jak najwcześniej: już po kroku 3 da się sprawdzić prawdziwe sklepy.
 
-- [ ] **Krok 1: Schematy wspólne + prompt.** `shared/models/prices.model.ts`: zod dla definicji
+- [x] **Krok 1: Schematy wspólne + prompt.** `shared/models/prices.model.ts`: zod dla definicji
       źródła (pkt 3), artykułu, źródła i okazji oraz typy DTO. Prompt bazowy
       `shared/prompts/price-source.prompt.ts` (pkt 10) z funkcją wypełniającą placeholdery i
       testem, że JSON Schema z zod się generuje. Parser ceny `pl-price` z testami
       („1 299,99 zł”, „1.299,00”, „od 89 zł”, NBSP).
-- [ ] **Krok 2: Silnik ekstrakcji** (czyste funkcje `html → wynik`). Strategia `auto`
+- [x] **Krok 2: Silnik ekstrakcji** (czyste funkcje `html → wynik`). Strategia `auto`
       (JSON-LD, OG, mikrodane) i `css` (jsdom). Testy na zapisanych fixture'ach HTML z kilku
       sklepów.
-- [ ] **Krok 3: Fetcher `http` + `POST /sources/test` + `/sources/snapshot`.** Ochrona przed
+- [x] **Krok 3: Fetcher `http` + `POST /sources/test` + `/sources/snapshot`.** Ochrona przed
       SSRF dla dowolnych hostów, wykrywanie blokad. **Rozpoznanie:** przepuścić przez
       endpoint listę docelowych sklepów (z serwera i lokalnie) i zapisać tabelkę: działa /
       wymaga przeglądarki / blokuje.
-- [ ] **Krok 4: Kontener `browser`.** Mały serwis Playwright z `/render`, docker-compose,
+- [x] **Krok 4: Kontener `browser`.** Mały serwis Playwright z `/render`, docker-compose,
       limit pamięci, fetcher `browser` w backendzie i logika `auto` z zapamiętywaniem.
       Wdrożenie na serwer i **aktualizacja `docs/SERVER.md`** (kontener, sieć, pamięć,
       dziennik zmian).
-- [ ] **Krok 5: Migracja + repozytorium + CRUD API artykułu.** Transakcje create/update/
+- [x] **Krok 5: Migracja + repozytorium + CRUD API artykułu.** Transakcje create/update/
       delete razem z zadaniem schedulera, FK RESTRICT i obsługa 409 w schedulerze. Testy:
       usunięcie artykułu nie zostawia żadnych wierszy w żadnej tabeli.
-- [ ] **Krok 6: Wykonanie.** Akcja `price.watch` w `actionRegistry`, kolejka `price.check` w
+- [x] **Krok 6: Wykonanie.** Akcja `price.watch` w `actionRegistry`, kolejka `price.check` w
       `boss.ts` i `worker.ts`, rozkład w oknie, limit na domenę, zapis obserwacji, stan
       źródła, snapshoty HTML, `check-now`.
-- [ ] **Krok 7: Ocena i okazje.** Reguły, deduplikacja, ponowne sprawdzenie podejrzanych
+- [x] **Krok 7: Ocena i okazje.** Reguły, deduplikacja, ponowne sprawdzenie podejrzanych
       wyników, wybór najtańszej oferty, usuwanie przez użytkownika (`/offers/dismiss`), API
       `/offers`. Testy jednostkowe na sekwencjach obserwacji (spadek → wzrost: okazja
       zostaje; usunięta → ta sama cena: nie wraca; usunięta → niższa cena: wraca).
-- [ ] **Krok 8: Wysyłka.** Telegram (chat id z artykułu) i e-mail (adres z artykułu) dla
+- [x] **Krok 8: Wysyłka.** Telegram (chat id z artykułu) i e-mail (adres z artykułu) dla
       nowych okazji oraz alert „źródło przestało działać”, endpoint `/notifications/test`. Formatowanie wiadomości (tytuł, sklep, cena, −X zł / −Y%, link).
-- [ ] **Krok 9: Frontend, lista `/ceny`.** Wyszukiwanie, filtry, stany źródeł, usuwanie,
+- [x] **Krok 9: Frontend, lista `/ceny`.** Wyszukiwanie, filtry, stany źródeł, usuwanie,
       „sprawdź teraz”.
-- [ ] **Krok 10: Frontend, formularz.** Tworzenie i edycja całego artykułu, karty źródeł,
+- [x] **Krok 10: Frontend, formularz.** Tworzenie i edycja całego artykułu, karty źródeł,
       „Sprawdź źródło” z porównaniem do `expected`, przyciski „Kopiuj prompt: nowe / napraw
       źródło”, wklejanie i walidacja odpowiedzi AI, harmonogram z podglądem terminów,
       powiadomienia.
-- [ ] **Krok 11: Frontend, zakładka `/okazje`.** Lista, filtry, przeczytane, odznaka w
+- [x] **Krok 11: Frontend, zakładka `/okazje`.** Lista, filtry, przeczytane, odznaka w
       nawigacji.
-- [ ] **Krok 12: Dopracowanie.** Wykres historii ceny źródła, czyszczenie starych
+- [x] **Krok 12: Dopracowanie.** Wykres historii ceny źródła, czyszczenie starych
       obserwacji i snapshotów (rozszerzenie `db.cleanup`), dokumentacja modułu
       (`docs/CENY.md` → przewodnik dewelopera jak `RADAR.md`).
 
@@ -463,3 +466,72 @@ Ustalone (2026-11-08):
 Otwarte:
 
 - Lista sklepów do rozpoznania w kroku 3.
+
+## 13. Realizacja (2026-11-08)
+
+### Gdzie jest kod
+| Część | Pliki |
+|---|---|
+| Typy wspólne | `packages/shared/models/prices.model.ts` |
+| Walidacja (zod), JSON Schema dla promptu | `packages/backend/src/modules/prices/prices.schemas.ts` |
+| Prompt dla AI (wersja `PRICE_SOURCE_PROMPT_VERSION`) | `…/prices/price-prompt.ts` |
+| Parser ceny, ekstrakcja, czyszczenie HTML, wykrywanie blokad | `…/prices/price-parse.ts`, `price-extract.ts`, `price-html.ts` |
+| Pobieranie http (SSRF, cookies) i klient przeglądarki | `…/prices/price-fetch.ts`, `price-check.ts` |
+| Serwis przeglądarki (Playwright) | `packages/browser/` (`server.mjs`, `Dockerfile`) |
+| Baza | `packages/backend/migrations/006_prices.sql`, `…/prices/prices.repository.ts` |
+| Artykuły + zadanie schedulera w jednej transakcji | `…/prices/prices.service.ts`, `scheduler.service.ts` (`createWithin/updateWithin/deleteWithin`) |
+| Harmonogram → kolejka | akcja `price.watch` (`scheduler/actions/price-watch.action.ts`), kolejka `prices.check` (`price-queue.ts`) |
+| Worker, reguły okazji, powiadomienia | `…/prices/price-worker.ts`, `price-evaluate.ts`, `price-notify.ts`, `price-runtime.ts` |
+| API | `…/prices/prices.controller.ts`, narzędzia formularza `prices.tools.ts` |
+| Frontend | `packages/frontend-vue-pwa/src/prices/` (`/ceny`, `/ceny/nowy`, `/ceny/:id`, `/okazje`) |
+
+### Różnice względem planu
+- **Schematy zod są w backendzie, nie w `shared`.** Pakiet `shared` nie ma zależności od zod i
+  zawiera same typy. Frontend dostaje gotowy prompt z backendu, więc schemat i tak jest w
+  jednym miejscu.
+- **Prompt składa backend** (`POST /api/prices/sources/prompt`): pobiera stronę, czyści HTML,
+  wycina JSON-LD i wstawia JSON Schema. Przycisk „Kopiuj prompt” kopiuje gotowy tekst. Jeśli
+  strona się nie pobierze, prompt prosi AI o samodzielne otwarcie linku albo zwrócenie
+  `blocked`.
+- **Adresy http i https** (nie tylko https), porty 80/443. Ochrona SSRF działa na poziomie DNS:
+  połączenia tylko do publicznych adresów, także po przekierowaniach i dla zasobów strony w
+  przeglądarce.
+- **Kolejny spadek w tym samym źródle aktualizuje istniejącą okazję** (jedna widoczna okazja
+  danego rodzaju na źródło), zamiast tworzyć nową. Okazja zachowuje pierwotną „cenę przed”,
+  więc widać cały spadek. „Inne oferty” to okazje z pozostałych sklepów i innych rodzajów.
+- **Reguła spadku:** okazja, gdy spadek względem poprzedniego udanego pomiaru jest
+  ≥ `min_drop_pct` (0 = każdy spadek). Reguła `lowest_30d` jest w modelu, ale nie jest
+  generowana, bo dublowałaby „obniżkę”.
+- **Oczekujące joby `prices.check` usuniętego artykułu nie są kasowane z pg-boss.** Worker
+  pomija je bez zapisu („source no longer exists”), a pg-boss sam je usuwa po 7 dniach.
+- **Wykrywanie podejrzanych cen:** zmiana > 70% względem ostatniej ceny nie jest zapisywana,
+  tylko sprawdzana ponownie po 15 minutach. Potwierdzone sprawdzenie jest przyjmowane bez
+  dalszych warunków.
+
+### Rozpoznanie (z domowego IP, Mac, 2026-11-08)
+| Sklep | Zwykłe zapytanie (http) | Przeglądarka (headless Chromium) |
+|---|---|---|
+| x-kom, euro.com.pl, morele, ceneo, empik, mediamarkt, komputronik, zalando | 200 ✓ | — |
+| Amazon.pl | 202 (strona weryfikacji) | 200 ✓ |
+| Media Expert | 403 | 403 „Cierpliwości...” ✗ |
+| Decathlon | 403 | 403 „Cierpliwości...” ✗ |
+| Allegro | 403 | 403 captcha ✗ |
+
+Wniosek: Media Expert, Decathlon i Allegro blokują także przeglądarkę bez okna. Zgodnie z
+założeniami nie dodawaliśmy wtyczek „stealth” ani obchodzenia captchy, więc te źródła
+dostaną status `blocked`. Opcje: agent w domu z widoczną przeglądarką (serwis ma już
+przełącznik `BROWSER_HEADLESS=false`, nieprzetestowany) albo oficjalne API Allegro. Z serwera
+Hetznera wyniki mogą być gorsze niż z domu.
+
+### Uruchomienie lokalne
+1. `npm install` i jednorazowo `npm run browser:install` (pobiera Chromium dla Playwright).
+2. `npm run up`: Postgres w Dockerze, potem backend, worker, frontend i serwis przeglądarki
+   (`localhost:3100`).
+3. Testy: `npm test --workspace=@myorg/backend` (z `DATABASE_URL`); testy na bazie:
+   `PRICES_INTEGRATION=1 DATABASE_URL=postgres://user:password@localhost:5432/app npm test --workspace=@myorg/backend`.
+
+### Wdrożenie na serwer (niewykonane)
+`docker-compose.prod.yml` ma nowy serwis `browser` (limit 1 GB RAM, `shm_size` 512 MB,
+wolumen `browser_profile`, bez wystawionego portu) i zmienne `PRICE_BROWSER_URL` oraz
+`PRICE_BROWSER_TOKEN` dla backendu i workera. Przed wdrożeniem: dodać `PRICE_BROWSER_TOKEN` do
+`/opt/imbiro/.env` i zaktualizować `docs/SERVER.md` (kontener, pamięć, dziennik zmian).
