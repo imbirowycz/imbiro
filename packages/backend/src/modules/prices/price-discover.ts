@@ -130,9 +130,14 @@ export function ceneoOffers(doc: Document, productId?: string): CeneoOffer[] {
   return [...out.values()]
 }
 
+// Akcesoria, które mają w nazwie kod modelu urządzenia („pilot do 55E8Q”, „uchwyt do …”).
+const ACCESSORY_RE = /\b(pilot|uchwyt|wieszak|kabel|przew[oó]d|etui|pokrowiec|folia|szk[lł]o|filtr|ładowark|zasilacz|obudow|podstawk|nóżk|nozk|części|czesci|zamiennik|do telewizora|do ekspresu|kompatybiln)/i
+
 /** Czy tytuł strony pasuje do szukanego artykułu (kod modelu albo większość słów nazwy). */
 export function titleMatches(title: string | null, name: string, token: string | null): boolean {
   if (!title) return false
+  // Akcesorium pasuje tylko wtedy, gdy szukamy akcesorium.
+  if (ACCESSORY_RE.test(title) && !ACCESSORY_RE.test(name)) return false
   const t = compact(title)
   if (token) return t.includes(compact(token))
   const words = name.toLowerCase().split(/\s+/).filter((w) => w.length >= 3)

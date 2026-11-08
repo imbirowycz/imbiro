@@ -39,4 +39,6 @@ test('titleMatches', () => {
   assert.equal(titleMatches('Ekspres SMEG BCC13BLMEU Czarny', 'Smeg BCC13BLMEU', 'bcc13blmeu'), true)
   assert.equal(titleMatches('Whirlpool WH7ITB14B3N6LW', 'Smeg BCC13BLMEU', 'bcc13blmeu'), false)
   assert.equal(titleMatches('Kawiarka Bialetti Moka Express 6 filiżanek', 'Bialetti Moka Express', null), true)
+  assert.equal(titleMatches('Oryginalny pilot HISENSE Smart TV 55E8Q 50E8Q', 'Hisense 55E8Q', '55e8q'), false)
+  assert.equal(titleMatches('Pilot Hisense 55E8Q', 'Pilot do Hisense 55E8Q', '55e8q'), true)
 })
