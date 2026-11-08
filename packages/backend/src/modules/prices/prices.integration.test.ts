@@ -192,3 +192,62 @@ test('worker: transient errors retry, deleted source is skipped', { skip: !enabl
   await service.delete(item.id)
   assert.deepEqual(await workerWith([]).process(fakeJob(sourceId)), { skipped: 'source no longer exists' })
 })
+
+// ---------- okazje ----------
+
+import { createPriceCheckWorker } from './price-runtime'
+
+test('offers: drop stays after price rise; dismissed returns only when cheaper', { skip: !enabled }, async () => {
+  const item = await service.create(body({ minDropPct: 5, sources: [{ label: 'A', url: 'https://sklep-a.example.com/p/1', fetchMode: 'auto', definition }] }))
+  const sourceId = item.sources[0].id
+  const prices = [200, 180, 219, 180, 175, 160]
+  const real = createPriceCheckWorker()
+  // Ten sam worker co produkcyjny, tylko z podstawionym pobieraniem strony.
+  const worker = new PriceCheckWorker(
+    (real as unknown as { hooks: CheckHooks }).hooks,
+    undefined,
+    async () => okOutcome(prices.shift() as number),
+    0
+  )
+  const visible = async () => (await service.listOffers({ itemId: item.id })).offers
+
+  await worker.process(fakeJob(sourceId)) // 200: pierwszy pomiar
+  assert.equal((await visible()).length, 0)
+
+  await worker.process(fakeJob(sourceId)) // 180: −10%
+  let offers = await visible()
+  assert.equal(offers.length, 1)
+  assert.equal(offers[0].kind, 'price_drop')
+  assert.equal(offers[0].price, 180)
+  assert.equal(offers[0].previousPrice, 200)
+  assert.equal(offers[0].dropAmount, 20)
+  assert.equal(offers[0].dropPct, 10)
+
+  await worker.process(fakeJob(sourceId)) // 219: wzrost — okazja zostaje, widać aktualną cenę
+  offers = await visible()
+  assert.equal(offers.length, 1)
+  assert.equal(offers[0].price, 180)
+  assert.equal(offers[0].currentPrice, 219)
+
+  await service.dismiss({ ids: [offers[0].id] })
+  assert.equal((await visible()).length, 0)
+
+  await worker.process(fakeJob(sourceId)) // 180: ta sama cena co usunięta — nie wraca
+  assert.equal((await visible()).length, 0)
+
+  await worker.process(fakeJob(sourceId)) // 175: −2.8% od 180 — poniżej progu 5%
+  assert.equal((await visible()).length, 0)
+
+  await worker.process(fakeJob(sourceId)) // 160: −8.6% i taniej niż usunięta → wraca
+  offers = await visible()
+  assert.equal(offers.length, 1)
+  assert.equal(offers[0].price, 160)
+  assert.equal(offers[0].readAt, null)
+  assert.equal((await service.unreadCount()).unread >= 1, true)
+
+  await service.markRead({ ids: [offers[0].id] })
+  assert.ok((await visible())[0].readAt)
+  const listed = await service.list({ q: 'bialetti' })
+  assert.ok(listed.some((i) => i.id === item.id && i.summary.activeOffers === 1 && i.summary.bestPrice === 160))
+  await service.delete(item.id)
+})
