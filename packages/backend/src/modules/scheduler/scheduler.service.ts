@@ -23,8 +23,8 @@ export class SchedulerService {
   constructor(
     private readonly boss: PgBoss,
     private readonly actions: ActionRegistry,
-    private readonly repository = new TaskRepository(),
-    private readonly executions = new ExecutionRepository(),
+    private readonly repository: TaskRepository,
+    private readonly executions: ExecutionRepository,
     private readonly now: () => Date = () => new Date()
   ) {}
 

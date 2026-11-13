@@ -21,7 +21,8 @@ Kod: `packages/backend/src/modules/radar/`, typy wspólne: `packages/shared/mode
             └─────────────────────────────────────────────┘
 ```
 
-API i Worker to **osobne procesy** — każdy ma własny rejestr, runner i cache (`radar.catalog.ts`).
+API i Worker to **osobne procesy** — każdy ma własny rejestr, runner i cache. Lista modułów jest w `radar.catalog.ts`,
+a obiekty dla procesu składa `src/composition.ts`.
 
 ## Odpowiedzialności
 

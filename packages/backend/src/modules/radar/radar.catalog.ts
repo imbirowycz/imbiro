@@ -1,6 +1,5 @@
 import type { NewsCategory } from '@myorg/shared'
 import { ModuleRegistry } from './core/module.registry'
-import { ModuleRunner } from './core/module.runner'
 import type { RadarModule } from './core/module.types'
 import { createScorer } from './parsing/relevance'
 import { radarConfig } from './radar.config'
@@ -18,7 +17,8 @@ import { createWeatherForecastModule, createWeatherNowModule } from './sources/w
 // The single, explicit list of radar modules and groups.
 // New module = new file with a factory + one `.register(...)` line here (and a group entry).
 // New RSS/Atom feed = one entry in sources/news/news.feeds.ts.
-// Built at import time; a misconfiguration (duplicate id, unknown group member, cycle) stops startup.
+// Built once per process in composition.ts; a misconfiguration (duplicate id, unknown group member,
+// cycle) stops startup.
 
 const NEWS_GROUPS: { id: string; name: string; description: string; categories: NewsCategory[] }[] = [
   { id: 'news.poland', name: 'Polska', description: 'Wiadomości z Polski', categories: ['poland'] },
@@ -116,7 +116,3 @@ export function createRadarRegistry(): ModuleRegistry {
 
   return registry.validate()
 }
-
-/** One registry and one runner (with its in-memory cache) per process: API and Worker each have their own. */
-export const radarRegistry = createRadarRegistry()
-export const radarRunner = new ModuleRunner(radarRegistry)

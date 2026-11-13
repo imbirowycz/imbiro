@@ -1,9 +1,11 @@
 // Public API of the scheduler module. Code outside modules/scheduler imports only from here.
 
+export { ExecutionRepository } from './execution.repository'
 export { createSchedulerRouter } from './scheduler.controller'
 export { SchedulerExecutor } from './scheduler.executor'
 export { SchedulerService } from './scheduler.service'
 export type { ExecuteJobData } from './task.queue'
+export { TaskRepository } from './task.repository'
 
 // Actions: the contract, the registry and the built-in handlers.
 export { ActionRegistry, parseWith } from './actions/action.registry'

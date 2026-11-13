@@ -32,8 +32,8 @@ export class SchedulerExecutor {
   constructor(
     private readonly boss: PgBoss,
     private readonly actions: ActionRegistry,
-    private readonly tasks = new TaskRepository(),
-    private readonly executions = new ExecutionRepository(),
+    private readonly tasks: TaskRepository,
+    private readonly executions: ExecutionRepository,
     private readonly timeoutSeconds = config.jobs.timeoutSeconds
   ) {}
 

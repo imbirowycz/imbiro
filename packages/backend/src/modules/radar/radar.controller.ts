@@ -6,12 +6,10 @@ import { asyncHandler } from '../../http'
 import { parseOrThrow } from '../../validation'
 import type { ModuleRegistry } from './core/module.registry'
 import { MAX_MODULES_PER_RUN, type ModuleRunner } from './core/module.runner'
-import { radarRegistry, radarRunner } from './radar.catalog'
-import { radarConfig } from './radar.config'
 import { buildDashboardSections, dashboardSnapshot } from './radar.dashboard'
 import { canonicalUrl } from './parsing/news.normalize'
-import { alertMarkExpiry, createReadItemsRepository, newsMarkExpiry, type ReadItemsStore, type ReadMark } from './read-items.repository'
-import { ArticleReader, ReaderBusyError } from './reader/article-reader'
+import { alertMarkExpiry, newsMarkExpiry, type ReadItemsStore, type ReadMark } from './read-items.repository'
+import { ReaderBusyError, type ArticleReader } from './reader/article-reader'
 
 type IdParams = { id: string }
 
@@ -43,9 +41,6 @@ function articleUrl(raw: string): string {
   return url
 }
 
-/** Reader instance of the API process (the Worker never reads articles). */
-const defaultReader = () => new ArticleReader({ allowedDomains: radarConfig.reader.allowedDomains })
-
 const runManySchema = z.strictObject({
   moduleIds: z.array(z.string().min(1).max(100)).min(1).max(MAX_MODULES_PER_RUN),
   force: z.boolean().default(false),
@@ -65,17 +60,19 @@ function toReadMark(body: z.infer<typeof markReadSchema>, now: Date): ReadMark {
   return { ...mark, title: body.title, source: body.source }
 }
 
+export interface RadarRouterDeps {
+  registry: ModuleRegistry
+  runner: ModuleRunner
+  reader: ArticleReader
+  readItems: ReadItemsStore
+}
+
 /**
  * Personal Radar API. Mounted under /api/radar, so it is behind session auth and CSRF like
  * the rest of /api. Module results are computed on demand (with an in-memory cache) and never stored.
  * A module failure is a normal 200 response with status "error" — it is data, not an API error.
  */
-export function createRadarRouter(
-  registry: ModuleRegistry = radarRegistry,
-  runner: ModuleRunner = radarRunner,
-  reader: ArticleReader = defaultReader(),
-  readItems: ReadItemsStore = createReadItemsRepository()
-): Router {
+export function createRadarRouter({ registry, runner, reader, readItems }: RadarRouterDeps): Router {
   const router = Router()
   // Resolved once: groups are static, and a broken layout should fail at startup.
   const dashboardSections = buildDashboardSections(registry)

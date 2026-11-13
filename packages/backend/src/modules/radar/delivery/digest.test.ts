@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import { alertReadKey, newsReadKey, type AlertItem, type ModuleResult, type NewsItem, type RunResult } from '@myorg/shared'
-import { radarRegistry } from '../radar.catalog'
+import { createRadarRegistry } from '../radar.catalog'
 import { buildDigest } from './digest'
+
+const radarRegistry = createRadarRegistry()
 
 const news = (n: number): NewsItem => ({
   id: `id-${n}`,

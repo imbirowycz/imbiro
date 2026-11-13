@@ -7,7 +7,8 @@ import { ActionConfigurationError, NonRetryableActionError, type ActionContext, 
 import { createEmailSendAction } from './email-send.action'
 import { createReportGenerateAction } from './report-generate.action'
 import { createTelegramSendAction } from './telegram-send.action'
-import { createActionRegistry } from '../../../composition'
+import type { PgBoss } from 'pg-boss'
+import { composeApi } from '../../../composition'
 
 const context: ActionContext = {
   taskId: '11111111-1111-1111-1111-111111111111',
@@ -20,7 +21,8 @@ const context: ActionContext = {
   log: () => {},
 }
 
-const actionRegistry = createActionRegistry()
+// The real set of actions, as wired for the application (nothing here touches the queue).
+const actionRegistry = composeApi({} as PgBoss).actions
 
 function detailsOf(fn: () => unknown): string[] {
   try {

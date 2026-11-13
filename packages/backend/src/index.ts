@@ -1,13 +1,12 @@
 import type { Server } from 'node:http'
 import { createApp } from './app'
 import { createBoss, ensureQueues } from './boss'
-import { createActionRegistry } from './composition'
+import { composeApi } from './composition'
 import { config } from './config'
 import { pool } from './db'
 import { runMigrations } from './migrate'
 import { runProcess } from './process'
 import { prepareAuth } from './modules/auth'
-import { SchedulerService } from './modules/scheduler'
 
 // API tylko zapisuje zadania i wysyła joby do pg-boss; wykonuje je osobny proces Workera.
 const boss = createBoss('api')
@@ -21,8 +20,7 @@ async function start(): Promise<void> {
   // Idempotentne; API może wystartować przed Workerem i od razu przyjmować zadania.
   await ensureQueues(boss)
 
-  const actions = createActionRegistry()
-  const app = createApp(new SchedulerService(boss, actions), actions)
+  const app = createApp(composeApi(boss))
   server = app.listen(config.port, '0.0.0.0', () => {
     console.log(`Backend listening on http://0.0.0.0:${config.port}`)
   })

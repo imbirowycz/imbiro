@@ -5,7 +5,8 @@ import { after, before, describe, it } from 'node:test'
 import argon2 from 'argon2'
 import { z } from 'zod'
 import { createApp } from './app'
-import { createActionRegistry } from './composition'
+import type { PgBoss } from 'pg-boss'
+import { composeApi } from './composition'
 import { NotFoundError, ValidationError } from './errors'
 import type { LoginLimiter } from './modules/auth/login-limiter'
 import type { AuthSession, SessionRepository } from './modules/auth/session.repository'
@@ -218,10 +219,13 @@ describe('HTTP API contract', () => {
 
   before(async () => {
     process.env.ADMIN_PASSWORD_HASH = await argon2.hash(PASSWORD, { type: argon2.argon2id })
-    const app = createApp(scheduler as unknown as SchedulerService, createActionRegistry(), {
+    const app = createApp({
+      scheduler: scheduler as unknown as SchedulerService,
+      // The real action list, as wired for the application.
+      actions: composeApi({} as PgBoss).actions,
       sessions: sessions as unknown as SessionRepository,
       loginLimiter: limiter as unknown as LoginLimiter,
-      radar: [radar.registry, radar.runner, radar.reader, radar.readItems.store],
+      radar: { registry: radar.registry, runner: radar.runner, reader: radar.reader, readItems: radar.readItems.store },
     })
     server = app.listen(0, '127.0.0.1')
     await new Promise((resolve) => server.once('listening', resolve))

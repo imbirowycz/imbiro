@@ -5,9 +5,9 @@ import { config } from '../../config'
 import { TooManyRequestsError, UnauthorizedError, UnsupportedMediaTypeError, ValidationError } from '../../errors'
 import { asyncHandler } from '../../http'
 import { csrfProtection, SESSION_COOKIE, sessionCookieOptions } from './auth.middleware'
-import { LoginLimiter } from './login-limiter'
+import type { LoginLimiter } from './login-limiter'
 import { normalizeLogin, verifyAdminCredentials } from './password'
-import { SessionRepository, type AuthSession } from './session.repository'
+import type { AuthSession, SessionRepository } from './session.repository'
 
 const loginSchema = z.object({
   login: z.string().trim().min(1).max(200),
@@ -31,7 +31,7 @@ function clientIp(req: Request): string {
   return req.ip ?? req.socket.remoteAddress ?? 'unknown'
 }
 
-export function createAuthRouter(sessions = new SessionRepository(), limiter = new LoginLimiter()): Router {
+export function createAuthRouter(sessions: SessionRepository, limiter: LoginLimiter): Router {
   const router = Router()
 
   router.post(

@@ -2,7 +2,7 @@ import { timingSafeEqual } from 'node:crypto'
 import type { CookieOptions, NextFunction, Request, Response } from 'express'
 import { config } from '../../config'
 import { ForbiddenError, UnauthorizedError } from '../../errors'
-import { SessionRepository, type AuthSession } from './session.repository'
+import type { AuthSession, SessionRepository } from './session.repository'
 
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace
@@ -48,7 +48,7 @@ export function readCookie(header: string | undefined, name: string): string | u
 }
 
 /** Wczytuje sesję z cookie i sprawdza ją w bazie przy każdym żądaniu. Nie wymaga logowania. */
-export function loadSession(sessions = new SessionRepository()) {
+export function loadSession(sessions: SessionRepository) {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const token = readCookie(req.headers.cookie, SESSION_COOKIE)
     if (!token) return next()

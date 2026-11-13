@@ -2,18 +2,29 @@ import cors from 'cors'
 import express from 'express'
 import { config } from './config'
 import { errorHandler, notFoundHandler } from './http'
-import { createAuthRouter, csrfProtection, loadSession, noStore, originCheck, requireAuth } from './modules/auth'
-import { createRadarRouter } from './modules/radar'
+import {
+  createAuthRouter,
+  csrfProtection,
+  loadSession,
+  noStore,
+  originCheck,
+  requireAuth,
+  type LoginLimiter,
+  type SessionRepository,
+} from './modules/auth'
+import { createRadarRouter, type RadarRouterDeps } from './modules/radar'
 import { createSchedulerRouter, type ActionRegistry, type SchedulerService } from './modules/scheduler'
 
-/** Optional replacements for the default collaborators (used by HTTP tests). */
-export interface AppOverrides {
-  sessions?: Parameters<typeof createAuthRouter>[0]
-  loginLimiter?: Parameters<typeof createAuthRouter>[1]
-  radar?: Parameters<typeof createRadarRouter>
+/** Everything the HTTP layer talks to. Built in composition.ts (tests pass fakes). */
+export interface AppDeps {
+  sessions: SessionRepository
+  loginLimiter: LoginLimiter
+  scheduler: SchedulerService
+  actions: ActionRegistry
+  radar: RadarRouterDeps
 }
 
-export function createApp(scheduler: SchedulerService, actions: ActionRegistry, overrides: AppOverrides = {}): express.Express {
+export function createApp({ sessions, loginLimiter, scheduler, actions, radar }: AppDeps): express.Express {
   const app = express()
   app.disable('x-powered-by')
   app.set('trust proxy', config.http.trustProxy || false)
@@ -33,13 +44,13 @@ export function createApp(scheduler: SchedulerService, actions: ActionRegistry, 
     res.json({ ok: true })
   })
 
-  app.use('/api', noStore, originCheck, loadSession(overrides.sessions))
+  app.use('/api', noStore, originCheck, loadSession(sessions))
   // Publiczne są tylko logowanie i sprawdzenie sesji.
-  app.use('/api/auth', createAuthRouter(overrides.sessions, overrides.loginLimiter))
+  app.use('/api/auth', createAuthRouter(sessions, loginLimiter))
   // Wszystko inne pod /api wymaga sesji — także przyszłe moduły i nieistniejące ścieżki (401, nie 404).
   app.use('/api', requireAuth, csrfProtection)
   app.use('/api/scheduler', createSchedulerRouter(scheduler, actions))
-  app.use('/api/radar', createRadarRouter(...(overrides.radar ?? [])))
+  app.use('/api/radar', createRadarRouter(radar))
 
   app.use(notFoundHandler)
   app.use(errorHandler)
