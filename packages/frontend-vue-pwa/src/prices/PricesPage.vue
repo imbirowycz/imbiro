@@ -72,9 +72,8 @@ function onSaved(item: PriceItem) {
   const isNew = !form.value?.item
   replaceItem(item)
   form.value = null
+  // The server checks a new item right away instead of waiting for its schedule.
   notice.value = { text: isNew ? `Dodano „${item.name}”. Pierwsze sprawdzenie zlecone.` : `Zapisano „${item.name}”.`, kind: 'ok' }
-  // A new item is checked right away instead of waiting for its schedule.
-  if (isNew && item.sources.length) void pricesApi.checkNow(item.id).catch(() => {})
 }
 
 function openForm(item: PriceItem | null) {

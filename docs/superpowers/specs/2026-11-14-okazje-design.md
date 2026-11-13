@@ -1,6 +1,6 @@
 # Okazje: śledzenie cen i ogłoszeń przez domowy zbieracz — projekt
 
-Data: 2026-11-14 · Branch: `feature/okazje` (z `dev`) · Status: do akceptacji
+Data: 2026-11-14 · Branch: `feature/okazje` (z `dev`) · Status: zaakceptowany, etap 1 zrealizowany
 
 ## Po co
 
@@ -134,13 +134,19 @@ Przenoszone z `feature/ceny` i dopasowane do układu `dev` (`core/`, `compositio
 publiczne `index.ts` modułu, klasy z kolaboratorami przez konstruktor):
 
 - wyciąganie ceny (`price-extract`, `price-parse`, `price-html`) z testami i fixture'ami,
-- ocena okazji (`price-evaluate`), powiadomienia (`price-notify`), prompt AI do definicji
-  źródła (`price-prompt`),
+- ocena okazji (`price-evaluate`), powiadomienia (`price-notify`),
 - repozytorium, serwis, schematy, kontroler (`/api/prices/*`), akcja `price.watch`,
   rozszerzenia `SchedulerService` (`createWithin` / `updateWithin` / `deleteWithin`),
 - sprzątanie starych pomiarów w `db.cleanup`.
 
 Zmiany względem starego modułu:
+
+- Narzędzia formularza, które pobierały stronę z serwera („Sprawdź źródło”, „Pobierz HTML
+  dla AI”, prompt AI), nie zostały przeniesione. Cena jest wykrywana automatycznie
+  (JSON-LD / OpenGraph / microdata); dla stron bez takich danych źródło przyjmuje własny
+  selektor CSS ceny. Zamiast testu przed zapisem: nowe źródło jest sprawdzane od razu.
+- Nie ma API listy okazji (`/offers`). Tabela `price_offers` służy tylko temu, żeby o tej
+  samej okazji nie powiadamiać dwa razy.
 
 - `price-fetch` i `price-check` (pobieranie http/przeglądarka z serwera) znikają. Zamiast
   nich: nowy kontroler `collector.controller.ts` (claim/results) i przetwarzanie wyniku —

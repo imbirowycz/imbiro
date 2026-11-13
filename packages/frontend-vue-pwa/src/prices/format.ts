@@ -2,7 +2,8 @@ import type { PriceSchedule, PriceShop, PriceSource, PriceSourceDefinition } fro
 
 export function money(value: number | null, currency = 'PLN'): string {
   if (value === null) return '—'
-  const amount = value.toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  // pl-PL groups thousands only from 10 000 up by default; prices read better grouped always.
+  const amount = new Intl.NumberFormat('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: 'always' } as Intl.NumberFormatOptions).format(value)
   return `${amount} ${currency === 'PLN' ? 'zł' : currency}`
 }
 

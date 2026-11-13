@@ -57,10 +57,12 @@ export class PricesService {
     const body = this.parse(input)
     const id = randomUUID()
     await withTransaction(async (client) => {
-      const task = await this.scheduler.createWithin(client, taskInput(id, body))
+      const task = await this.scheduler.createWithin(client, { ...taskInput(id, body), ...firstRun(body, this.now()) })
       await this.repo.insertItem(id, itemWrite(body), task.id, client)
       await this.saveSources(client, id, body, [])
     })
+    // A new item is checked right away; its schedule starts one period later (see firstRun).
+    if (body.enabled) await this.checkNow(id)
     return this.get(id)
   }
 
@@ -280,6 +282,15 @@ export function taskInput(itemId: string, body: SaveItemInput): Record<string, u
     scheduleConfig: isCron ? { expression: body.schedule.cron } : { everySeconds: (body.schedule.everyHours ?? 24) * 3600 },
     timezone: PRICE_TIMEZONE,
   }
+}
+
+/**
+ * An interval schedule counts from its start, so a task starting "now" would run at once —
+ * on top of the immediate check of a new item. Start it one period later instead.
+ */
+function firstRun(body: SaveItemInput, now: Date): { startAt?: string } {
+  if (body.schedule.kind !== 'interval') return {}
+  return { startAt: new Date(now.getTime() + (body.schedule.everyHours ?? 24) * 3_600_000).toISOString() }
 }
 
 export function scheduleFromTask(task: TaskRecord | undefined, jitterMinutes: number): PriceSchedule {
