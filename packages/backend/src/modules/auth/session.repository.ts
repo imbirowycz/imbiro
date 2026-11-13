@@ -3,7 +3,7 @@ import { config } from '../../config'
 import { pool, type Queryable } from '../../db'
 
 export interface AuthSession {
-  /** SHA-256 tokenu — klucz w bazie. */
+  /** SHA-256 of the token — the key in the database. */
   id: string
   csrfToken: string
   createdAt: Date
@@ -18,7 +18,7 @@ interface SessionRow {
   expires_at: Date
 }
 
-// Aktywność zapisujemy najwyżej raz na minutę, żeby nie robić UPDATE przy każdym żądaniu.
+// Activity is recorded at most once a minute, to avoid an UPDATE on every request.
 const TOUCH_INTERVAL_MS = 60_000
 
 function hashToken(token: string): string {
@@ -30,7 +30,7 @@ function toSession(row: SessionRow): AuthSession {
 }
 
 export class SessionRepository {
-  /** Nowa sesja. Zwraca token do cookie — w bazie zostaje tylko jego hash. */
+  /** New session. Returns the token for the cookie — only its hash stays in the database. */
   async create(meta: { ip: string; userAgent: string | null }, db: Queryable = pool): Promise<{ token: string; session: AuthSession }> {
     const token = randomBytes(32).toString('base64url')
     const csrfToken = randomBytes(32).toString('base64url')
@@ -43,7 +43,7 @@ export class SessionRepository {
     return { token, session: toSession(result.rows[0]) }
   }
 
-  /** Aktywna sesja dla tokenu z cookie (nie wygasła ani bezwzględnie, ani przez bezczynność). */
+  /** Active session for the cookie token (expired neither absolutely nor through inactivity). */
   async findActive(token: string, db: Queryable = pool): Promise<AuthSession | null> {
     const result = await db.query<SessionRow>(
       `SELECT * FROM admin_sessions

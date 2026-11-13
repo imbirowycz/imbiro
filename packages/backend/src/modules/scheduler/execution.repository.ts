@@ -91,8 +91,8 @@ export class ExecutionRepository {
   }
 
   /**
-   * Rekord dla zaplanowanego terminu. Unikalny indeks (task_id, scheduled_for) sprawia, że
-   * przy wyścigu tylko jeden job go utworzy — pozostali dostają null.
+   * Record for a scheduled run. The unique index (task_id, scheduled_for) guarantees that
+   * in a race only one job creates it — the others get null.
    */
   async insertScheduled(taskId: string, scheduledFor: Date, jobId: string, db: Queryable = pool): Promise<ExecutionRecord | null> {
     const result = await db.query<ExecutionRow>(
@@ -116,9 +116,9 @@ export class ExecutionRepository {
   }
 
   /**
-   * Rozpoczęcie próby. Warunek na job_id i status sprawia, że wykonanie przejmuje tylko job,
-   * który jest jego właścicielem (także jego ponowienie po awarii workera) i tylko dopóki
-   * wykonanie się nie zakończyło. Zwraca null, gdy próba nie może wystartować.
+   * Start of an attempt. The condition on job_id and status means the execution is taken over only
+   * by the job that owns it (including its retry after a worker crash) and only while
+   * the execution has not finished. Returns null when the attempt cannot start.
    */
   async startAttempt(id: string, jobId: string, attempt: number, db: Queryable = pool): Promise<ExecutionRecord | null> {
     const result = await db.query<ExecutionRow>(
@@ -132,8 +132,8 @@ export class ExecutionRepository {
   }
 
   /**
-   * Zapis wyniku próby. `attempts = $attempt` to token ogrodzenia: spóźniona próba (np. po
-   * timeoucie, gdy działa już kolejna) nie nadpisze nowszego stanu. Zwraca false, gdy nic nie zapisano.
+   * Records the result of an attempt. `attempts = $attempt` is a fencing token: a late attempt (e.g. after
+   * a timeout, when the next one is already running) cannot overwrite newer state. Returns false when nothing was written.
    */
   async finishAttempt(
     id: string,
@@ -164,7 +164,7 @@ export class ExecutionRepository {
     return (result.rowCount ?? 0) > 0
   }
 
-  /** Oznacza niedokończone wykonanie jako failed (odzyskiwanie po awarii). */
+  /** Marks an unfinished execution as failed (crash recovery). */
   async failUnfinished(id: string, error: string, db: Queryable = pool): Promise<boolean> {
     const result = await db.query(
       `UPDATE task_executions
@@ -175,7 +175,7 @@ export class ExecutionRepository {
     return (result.rowCount ?? 0) > 0
   }
 
-  /** Niedokończone wykonania bez zmian od `olderThanSeconds` — kandydaci do sprawdzenia stanu joba. */
+  /** Unfinished executions unchanged for `olderThanSeconds` — candidates for a job state check. */
   async findStale(olderThanSeconds: number, limit = 100, db: Queryable = pool): Promise<ExecutionRecord[]> {
     const result = await db.query<ExecutionRow>(
       `SELECT * FROM task_executions

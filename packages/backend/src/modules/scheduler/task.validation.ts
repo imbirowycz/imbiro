@@ -3,7 +3,7 @@ import { ValidationError } from '../../errors'
 import { parseOrThrow } from '../../validation'
 import { isValidTimeZone, validateCronExpression, type ScheduleDefinition } from './schedule.rules'
 
-// Format zgodny z CHECK w bazie, np. "email.send".
+// Format matching the CHECK constraint in the database, e.g. "email.send".
 const ACTION_TYPE_RE = /^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$/
 
 const MAX_INTERVAL_SECONDS = 366 * 24 * 3600
@@ -60,7 +60,7 @@ const taskDefinitionSchema = baseSchema.and(scheduleSchema).superRefine((value, 
 
 export type TaskDefinition = z.output<typeof taskDefinitionSchema> & ScheduleDefinition
 
-/** Pola, które klient może zmieniać przez PATCH. */
+/** Fields the client may change with PATCH. */
 export const EDITABLE_FIELDS = [
   'title',
   'description',
@@ -78,7 +78,7 @@ export function parseTaskDefinition(input: unknown): TaskDefinition {
   return parseOrThrow(taskDefinitionSchema, input, 'Invalid task definition') as TaskDefinition
 }
 
-/** Odrzuca nieznane pola i nie-obiekty, zanim body zostanie scalone z istniejącym zadaniem. */
+/** Rejects unknown fields and non-objects before the body is merged with the existing task. */
 export function assertEditableFields(input: unknown): Record<string, unknown> {
   if (typeof input !== 'object' || input === null || Array.isArray(input)) {
     throw new ValidationError('Request body must be a JSON object')

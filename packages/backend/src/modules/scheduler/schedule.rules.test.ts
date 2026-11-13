@@ -77,7 +77,7 @@ describe('interval', () => {
 
 describe('cron', () => {
   it('evaluates in the task timezone', () => {
-    // 9:00 w Warszawie: przed zmianą czasu UTC+2, po 25.10.2026 UTC+1
+    // 9:00 in Warsaw: UTC+2 before the clock change, UTC+1 after 2026-10-25
     const def = cron('0 9 * * *', { timezone: 'Europe/Warsaw' })
     assert.equal(iso(nextOccurrence(def, d('2026-10-24T12:00:00Z'))), '2026-10-25T08:00:00.000Z')
     assert.equal(iso(nextOccurrence(def, d('2026-10-23T12:00:00Z'))), '2026-10-24T07:00:00.000Z')

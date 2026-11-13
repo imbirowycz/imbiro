@@ -12,7 +12,7 @@ const MAX_EXECUTIONS_LIMIT = 200
 export function createSchedulerRouter(service: SchedulerService, actions: ActionRegistry): Router {
   const router = Router()
 
-  // Dostępne typy akcji — dla formularza na froncie.
+  // Available action types — for the form in the frontend.
   router.get('/actions', (_req, res) => {
     res.json(actions.list())
   })
@@ -60,7 +60,7 @@ export function createSchedulerRouter(service: SchedulerService, actions: Action
     })
   )
 
-  // 202: wykonanie jest w kolejce; jego stan widać w historii wykonań.
+  // 202: the execution is queued; its state is visible in the execution history.
   router.post(
     '/tasks/:id/run',
     asyncHandler<TaskParams>(async (req, res) => {

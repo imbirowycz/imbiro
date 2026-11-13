@@ -4,7 +4,7 @@ import { parseWith } from './action.registry'
 import type { ActionHandler } from './action.types'
 
 const configSchema = z.strictObject({
-  // Okres raportu wstecz od momentu wykonania.
+  // Report period, counted back from the moment of execution.
   periodHours: z.number().int().min(1).max(720).default(24),
 })
 
@@ -20,7 +20,7 @@ interface TaskStatsRow {
   last_run_at: Date | null
 }
 
-/** Raport wykonań schedulera z ostatnich N godzin — przykład akcji bez integracji zewnętrznej. */
+/** Report of scheduler executions from the last N hours — an example of an action without an external integration. */
 export function createReportGenerateAction(db: () => Queryable = () => pool): ActionHandler<ReportGenerateConfig> {
   return {
     type: 'report.generate',

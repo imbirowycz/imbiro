@@ -1,6 +1,6 @@
 import type { ApiErrorDetail } from '@myorg/shared'
 
-// Błędy domenowe; mapowanie na kody HTTP robi warstwa API.
+// Domain errors; the API layer maps them to HTTP status codes.
 
 export class AppError extends Error {
   constructor(

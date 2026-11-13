@@ -7,7 +7,7 @@ export const pool = new Pool({
   connectionString: config.databaseUrl,
 })
 
-/** Pool albo klient w trakcie transakcji — repozytoria przyjmują oba. */
+/** A pool or a client inside a transaction — repositories accept both. */
 export type Queryable = pg.Pool | pg.PoolClient
 
 export async function withTransaction<T>(fn: (client: pg.PoolClient) => Promise<T>): Promise<T> {

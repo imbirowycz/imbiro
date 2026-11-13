@@ -1,41 +1,41 @@
 import type { ExecutionTrigger } from '@myorg/shared'
 
-/** Informacje o bieżącym wykonaniu przekazywane do handlera akcji. */
+/** Information about the current execution passed to the action handler. */
 export interface ActionContext {
   taskId: string
   taskTitle: string
   /**
-   * Id rekordu w task_executions — stały dla wszystkich prób tego samego terminu.
-   * Handler może go użyć jako klucza idempotencji po stronie zewnętrznej usługi.
+   * Id of the task_executions record — the same for every attempt of one run.
+   * A handler may use it as an idempotency key on the external service's side.
    */
   executionId: string
   scheduledFor: Date
   trigger: ExecutionTrigger
-  /** Numer próby, od 1. */
+  /** Attempt number, starting at 1. */
   attempt: number
-  /** Przerwany przy timeoucie albo zamykaniu workera; handler powinien go przekazywać do I/O. */
+  /** Aborted on timeout or worker shutdown; the handler should pass it to its I/O. */
   signal: AbortSignal
   log: (message: string) => void
 }
 
-/** Wynik zapisywany w task_executions.result (musi dać się zserializować do JSON). */
+/** Result stored in task_executions.result (must be JSON-serializable). */
 export type ActionResult = Record<string, unknown> | null
 
 export interface ActionHandler<TConfig = unknown> {
-  /** Klucz w rejestrze, zapisywany jako scheduled_tasks.action_type, np. "email.send". */
+  /** Registry key, stored as scheduled_tasks.action_type, e.g. "email.send". */
   readonly type: string
   readonly description: string
   /**
-   * Waliduje konfigurację z bazy/API i zwraca ją w znormalizowanej postaci.
-   * Rzuca ValidationError. Nie sprawdza integracji (env) — to błąd wykonania, nie danych.
+   * Validates a config from the database/API and returns it in normalized form.
+   * Throws ValidationError. Does not check integrations (env) — that is a runtime error, not a data error.
    */
   validateConfig(config: unknown): TConfig
   execute(context: ActionContext, config: TConfig): Promise<ActionResult>
 }
 
 /**
- * Błąd, którego ponowienie nie ma sensu (np. brak konfiguracji integracji, odrzucony adresat).
- * Worker kończy wtedy wykonanie od razu jako failed, bez kolejnych prób.
+ * An error that retrying cannot fix (e.g. missing integration configuration, rejected recipient).
+ * The worker then ends the execution right away as failed, with no further attempts.
  */
 export class NonRetryableActionError extends Error {
   constructor(message: string) {
@@ -44,5 +44,5 @@ export class NonRetryableActionError extends Error {
   }
 }
 
-/** Integracja potrzebna akcji nie jest skonfigurowana w środowisku. */
+/** The integration an action needs is not configured in the environment. */
 export class ActionConfigurationError extends NonRetryableActionError {}

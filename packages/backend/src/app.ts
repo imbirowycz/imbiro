@@ -29,8 +29,8 @@ export function createApp({ sessions, loginLimiter, scheduler, actions, radar }:
   app.disable('x-powered-by')
   app.set('trust proxy', config.http.trustProxy || false)
 
-  // CORS tylko dla wskazanych originów frontendu; bez listy przeglądarka nie dostanie zgody
-  // na żądania z innych stron (na produkcji frontend i API są pod tym samym adresem).
+  // CORS only for the listed frontend origins; without the list the browser gets no permission
+  // for requests from other sites (in production the frontend and the API share one address).
   app.use(
     cors({
       origin: config.http.allowedOrigins.length ? config.http.allowedOrigins : false,
@@ -45,9 +45,9 @@ export function createApp({ sessions, loginLimiter, scheduler, actions, radar }:
   })
 
   app.use('/api', noStore, originCheck, loadSession(sessions))
-  // Publiczne są tylko logowanie i sprawdzenie sesji.
+  // Only login and the session check are public.
   app.use('/api/auth', createAuthRouter(sessions, loginLimiter))
-  // Wszystko inne pod /api wymaga sesji — także przyszłe moduły i nieistniejące ścieżki (401, nie 404).
+  // Everything else under /api needs a session — future modules and unknown paths too (401, not 404).
   app.use('/api', requireAuth, csrfProtection)
   app.use('/api/scheduler', createSchedulerRouter(scheduler, actions))
   app.use('/api/radar', createRadarRouter(radar))

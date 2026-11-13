@@ -102,6 +102,35 @@ npm run dev --workspace=@myorg/frontend-vue-pwa
 
 Bez backendu żądania do API zwrócą błędy; proxy `/api` działa, gdy backend nasłuchuje na porcie 3000.
 
+## Struktura backendu
+
+```
+packages/backend/src/
+  index.ts         proces API (Express)
+  worker.ts        proces Workera (wykonuje joby z pg-boss)
+  composition.ts   jedyne miejsce, w którym moduły są ze sobą łączone
+  app.ts           middleware i podpięcie routerów
+  config.ts, db.ts, boss.ts, migrate.ts, errors.ts, http.ts, validation.ts, process.ts   infrastruktura
+  modules/
+    auth/          logowanie, sesje, CSRF, limity logowań
+    radar/         Personal Radar (opis: docs/RADAR.md)
+    scheduler/     zadania, harmonogram, kolejka, akcje
+```
+
+Zasady, których trzyma się kod:
+
+- **Moduł ma jedno wejście** — `modules/<nazwa>/index.ts`. Kod spoza modułu importuje tylko stamtąd.
+- **Zależności są jawne.** Repozytoria, rejestry i serwisy powstają w `composition.ts` i są przekazywane
+  przez konstruktor albo parametr; nic nie tworzy ich „po cichu” przy imporcie.
+- **Scheduler nie zna innych modułów.** Akcja należy do modułu, którego logikę wykonuje
+  (np. `radar.deliver` leży w `radar/delivery/`), a listę akcji składa `composition.ts`.
+- **Warstwy w module:** `*.controller.ts` (trasy HTTP) → `*.service.ts` (reguły) → `*.repository.ts` (SQL).
+  Repozytoria to klasy; metody przyjmują opcjonalnie klienta transakcji.
+- **Walidacja wejścia** schematami zod przez `parseOrThrow` (`validation.ts`), zwykle w kontrolerze.
+  Wyjątek: definicję zadania schedulera sprawdza serwis, bo poprawność `PATCH` zależy od zapisanego zadania.
+- **Testy** (`npm test --workspace=@myorg/backend`) nie potrzebują bazy ani `.env`;
+  `app.http.test.ts` pilnuje kontraktu HTTP (statusy, nagłówki, format błędów).
+
 ## Migracje bazy danych
 
 Pliki SQL w `packages/backend/migrations/` (`NNN_nazwa.sql`) są wykonywane automatycznie przy starcie backendu, w kolejności nazw, każdy w osobnej transakcji. Wykonane migracje są zapisywane w tabeli `schema_migrations`; równoległe starty (backend + worker) chroni `pg_advisory_lock`. Nowa zmiana schematu = nowy plik z kolejnym numerem — nie edytuj już wykonanych.

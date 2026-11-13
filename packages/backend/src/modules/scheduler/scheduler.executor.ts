@@ -23,10 +23,10 @@ export type ProcessOutcome =
 const ACTIVE_JOB_STATES = new Set(['created', 'retry', 'active'])
 
 /**
- * Wykonanie jobów z kolejki `scheduler.execute` — wspólne dla terminów z harmonogramu i
- * ręcznych uruchomień. Gwarancja to „co najmniej raz” z deduplikacją po naszej stronie:
- * jeden rekord task_executions na termin i fencing kolejnych prób. Akcja zewnętrzna może
- * zostać wykonana ponownie, jeśli worker padnie po jej wykonaniu, a przed zapisem wyniku.
+ * Executes jobs from the `scheduler.execute` queue — shared by scheduled runs and
+ * manual runs. The guarantee is "at least once" with deduplication on our side:
+ * one task_executions record per run and fencing of later attempts. An external action may
+ * run again if the worker dies after performing it but before recording the result.
  */
 export class SchedulerExecutor {
   constructor(
@@ -61,11 +61,11 @@ export class SchedulerExecutor {
       if (err instanceof NonRetryableActionError || isLastAttempt) {
         await this.executions.finishAttempt(started.id, attempt, { status: 'failed', error: message })
         console.error(`${tag} failed: ${message}`)
-        // Błąd trwały: kończymy job bez ponowień. Ostatnia próba: oddajemy błąd do pg-boss (job = failed).
+        // Permanent error: finish the job without retries. Last attempt: hand the error to pg-boss (job = failed).
         if (err instanceof NonRetryableActionError) return { executionId: started.id, status: 'failed' }
         throw err
       }
-      // Wróci do kolejki z backoff; do tego czasu rekord czeka jako pending z ostatnim błędem.
+      // It returns to the queue with backoff; until then the record waits as pending with the last error.
       await this.executions.finishAttempt(started.id, attempt, { status: 'pending', error: message })
       console.warn(`${tag} failed, will retry: ${message}`)
       throw err
@@ -73,9 +73,9 @@ export class SchedulerExecutor {
   }
 
   /**
-   * Przejęcie zaplanowanego terminu. Pod blokadą wiersza zadania: tworzy rekord wykonania,
-   * przesuwa next_run_at i dodaje job kolejnego terminu — atomowo. Ponowienie tego samego joba
-   * (także po awarii workera) przejmuje istniejący rekord; inny job dla tego terminu jest pomijany.
+   * Claims a scheduled run. Under the task row lock: creates the execution record,
+   * advances next_run_at and enqueues the job of the next run — atomically. A retry of the same job
+   * (also after a worker crash) takes over the existing record; another job for this run is skipped.
    */
   private async claimScheduled(job: JobWithMetadata<ScheduledJobData>): Promise<ExecutionRecord | { skipped: string }> {
     const slot = new Date(job.data.scheduledFor)
@@ -88,7 +88,7 @@ export class SchedulerExecutor {
       if (existing) {
         if (existing.jobId !== job.id) return { skipped: `slot already handled by job ${existing.jobId}` }
         if (existing.status === 'succeeded' || existing.status === 'failed') return { skipped: 'slot already finished' }
-        // Termin przejęty wcześniej przez ten job — dokańczamy go nawet po zmianie harmonogramu.
+        // Run claimed earlier by this job — finish it even if the schedule has changed since.
         return existing
       }
 
@@ -117,7 +117,7 @@ export class SchedulerExecutor {
   }
 
   private async runAction(execution: ExecutionRecord, attempt: number, jobSignal: AbortSignal, tag: string) {
-    // Konfigurację czytamy przy każdym wykonaniu — edycja akcji działa od najbliższego terminu.
+    // The config is read on every execution — an edited action takes effect from the next run.
     const task = await this.tasks.findById(execution.taskId)
     if (!task) throw new NonRetryableActionError('Task no longer exists')
     if (!this.actions.has(task.actionType)) {
@@ -150,9 +150,9 @@ export class SchedulerExecutor {
   }
 
   /**
-   * Odzyskiwanie po awarii: wykonanie, które utknęło w pending/running, choć jego job w pg-boss
-   * już się zakończył (albo zniknął), oznaczamy jako failed. Wykonania, których job wciąż czeka
-   * lub będzie ponowiony, zostawiamy — pg-boss dokończy je sam po wygaśnięciu claimu.
+   * Crash recovery: an execution stuck in pending/running although its pg-boss job
+   * has already ended (or is gone) is marked as failed. Executions whose job still waits
+   * or will be retried are left alone — pg-boss finishes them itself once the claim expires.
    */
   async recoverInterrupted(): Promise<number> {
     const staleAfterSeconds = this.timeoutSeconds + JOB_EXPIRE_GRACE_SECONDS + 60
@@ -174,7 +174,7 @@ export class SchedulerExecutor {
   }
 }
 
-/** Uruchamia `fn` z limitem czasu; przerywa sygnał przy timeoucie albo gdy pg-boss odbierze job. */
+/** Runs `fn` with a time limit; aborts the signal on timeout or when pg-boss takes the job away. */
 async function withTimeout<T>(seconds: number, parent: AbortSignal, fn: (signal: AbortSignal) => Promise<T>): Promise<T> {
   const controller = new AbortController()
   const signal = AbortSignal.any([controller.signal, parent])

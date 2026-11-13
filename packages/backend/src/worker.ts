@@ -7,7 +7,7 @@ import { runMigrations } from './migrate'
 import { runProcess } from './process'
 import type { ExecuteJobData } from './modules/scheduler'
 
-// Osobny proces od Express: wykonuje joby z pg-boss i odpowiada za utrzymanie kolejki.
+// A process separate from Express: executes pg-boss jobs and maintains the queue.
 
 const boss = createBoss('worker')
 const { scheduler, executor } = composeWorker(boss)
@@ -20,7 +20,7 @@ async function reconcile(): Promise<void> {
 
 async function start(): Promise<void> {
   await runMigrations()
-  // Kilka prób, bo w Docker Compose baza może jeszcze nie przyjmować połączeń.
+  // Several attempts, because in Docker Compose the database may not accept connections yet.
   await boss.start({ attempts: 5 })
   await ensureQueues(boss)
 
@@ -38,7 +38,7 @@ async function start(): Promise<void> {
 }
 
 async function stop(): Promise<void> {
-  // graceful: przestaje pobierać nowe joby i czeka na aktywne (do timeout).
+  // graceful: stops fetching new jobs and waits for the active ones (up to the timeout).
   await boss.stop({ graceful: true, timeout: config.worker.shutdownTimeoutSeconds * 1000 })
   await pool.end()
 }

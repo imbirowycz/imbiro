@@ -15,9 +15,9 @@ import { assertEditableFields, parseTaskDefinition, type TaskDefinition } from '
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 /**
- * Zarządzanie definicjami zadań. Każda zmiana zadania i odpowiadająca jej zmiana w kolejce
- * pg-boss są zapisywane w jednej transakcji, więc nie da się zostać z zadaniem bez joba
- * (albo z jobem bez zadania) po błędzie w połowie operacji.
+ * Manages task definitions. Every task change and the matching change in the pg-boss
+ * queue are written in one transaction, so a failure halfway cannot leave a task without a job
+ * (or a job without a task).
  */
 export class SchedulerService {
   constructor(
@@ -46,7 +46,7 @@ export class SchedulerService {
   async create(input: unknown): Promise<ScheduledTask> {
     const now = this.now()
     const body = assertEditableFields(input)
-    // Dla cron/interval brak startAt = od teraz; dla once termin musi być podany wprost.
+    // For cron/interval a missing startAt = from now; for once the time must be given explicitly.
     if (body.startAt === undefined && body.scheduleType !== 'once') {
       body.startAt = now.toISOString()
     }
@@ -70,13 +70,13 @@ export class SchedulerService {
 
     return withTransaction(async (client) => {
       const previous = await this.lockTask(id, client)
-      // Zmiana typu harmonogramu bez nowej konfiguracji nie może dziedziczyć starej.
+      // A changed schedule type without a new config must not inherit the old one.
       if (patch.scheduleType !== undefined && patch.scheduleType !== previous.scheduleType && patch.scheduleConfig === undefined) {
         throw new ValidationError('Invalid task definition', [
           { path: 'scheduleConfig', message: 'Required when scheduleType changes' },
         ])
       }
-      // Zmiana typu akcji bez nowej konfiguracji też nie dziedziczy starej.
+      // A changed action type without a new config does not inherit the old one either.
       const merged = { ...toInput(previous), ...patch }
       if (patch.actionType !== undefined && patch.actionType !== previous.actionType && patch.actionConfig === undefined) {
         merged.actionConfig = {}
@@ -126,9 +126,9 @@ export class SchedulerService {
   }
 
   /**
-   * Ręczne uruchomienie: rekord wykonania i job powstają w jednej transakcji, a job trafia do tej
-   * samej kolejki i executora co terminy z harmonogramu. Działa także dla wyłączonego zadania
-   * i nie zmienia jego harmonogramu.
+   * Manual run: the execution record and the job are created in one transaction, and the job goes to
+   * the same queue and executor as scheduled runs. It also works for a disabled task
+   * and does not change its schedule.
    */
   async runNow(id: string): Promise<TaskExecution> {
     const task = await this.getRecord(id)
@@ -146,9 +146,9 @@ export class SchedulerService {
   }
 
   /**
-   * Ponownie wysyła joby dla wszystkich zaplanowanych terminów. Idempotentne: termin, który
-   * już czeka w kolejce, zostaje pominięty przez pg-boss. Odtwarza joby utracone np. przez
-   * ręczne czyszczenie kolejki. Zwraca liczbę nowo dodanych jobów.
+   * Re-sends jobs for all planned runs. Idempotent: a run that already
+   * waits in the queue is skipped by pg-boss. Restores jobs lost e.g. by
+   * a manual queue purge. Returns the number of newly added jobs.
    */
   async reconcile(): Promise<number> {
     let enqueued = 0
@@ -159,8 +159,8 @@ export class SchedulerService {
   }
 
   /**
-   * Walidacja definicji i konfiguracji akcji (z rejestru); zapisujemy znormalizowaną konfigurację.
-   * Obie części są sprawdzane zawsze, żeby klient dostał wszystkie błędy w jednej odpowiedzi.
+   * Validates the definition and the action config (from the registry); the normalized config is stored.
+   * Both parts are always checked, so the client gets all errors in one response.
    */
   private parseDefinition(input: Record<string, unknown>): TaskDefinition {
     const details: ApiErrorDetail[] = []
@@ -183,7 +183,7 @@ export class SchedulerService {
     })
 
     if (details.length > 0 || !definition) {
-      // Zły actionType zgłaszają obie części — zostawiamy pierwszy komunikat dla danego pola.
+      // A bad actionType is reported by both parts — keep the first message for a given field.
       const unique = details.filter((d, i) => details.findIndex((other) => other.path === d.path) === i)
       throw new ValidationError('Invalid task definition', unique)
     }
@@ -197,8 +197,8 @@ export class SchedulerService {
   }
 
   /**
-   * Nowy stan zadania po edycji. Termin i wersja harmonogramu zmieniają się tylko wtedy,
-   * gdy zmienił się harmonogram albo aktywność — edycja np. tytułu nie przesuwa terminu.
+   * New task state after an edit. The run time and the schedule version change only when
+   * the schedule or the enabled flag changed — editing e.g. the title does not move the run.
    */
   private applyDefinition(previous: TaskRecord, definition: TaskDefinition): TaskWrite {
     const scheduleChanged =
@@ -219,7 +219,7 @@ export class SchedulerService {
     }
   }
 
-  /** Termin dla aktywnego zadania; aktywne zadanie bez żadnego przyszłego terminu to błąd danych. */
+  /** Run time for an enabled task; an enabled task without any future run is a data error. */
   private planOrReject(definition: TaskDefinition, now: Date): Date | null {
     if (!definition.enabled) return null
     const nextRunAt = initialRunAt(definition, now)
@@ -236,11 +236,11 @@ export class SchedulerService {
 }
 
 function assertUuid(id: string): void {
-  // Zły format id = brak zadania, a nie błąd bazy.
+  // A malformed id = no such task, not a database error.
   if (!UUID_RE.test(id)) throw new NotFoundError(`Task ${id} not found`)
 }
 
-/** Zadanie w kształcie wejścia API — baza do scalenia z PATCH. */
+/** The task in the shape of API input — the base that a PATCH is merged into. */
 function toInput(task: TaskRecord): Record<string, unknown> {
   return {
     title: task.title,

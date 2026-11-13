@@ -3,15 +3,15 @@ import { PgBoss, type Db, type Queue } from 'pg-boss'
 import { config } from './config'
 
 export const QUEUES = {
-  // Jeden job = jeden termin wykonania zadania schedulera.
+  // One job = one scheduled run of a scheduler task.
   execute: 'scheduler.execute',
-  // Cykliczna (co minutę) ponowna synchronizacja terminów z kolejką — siatka bezpieczeństwa.
+  // Periodic (every minute) re-sync of planned runs with the queue — a safety net.
   reconcile: 'scheduler.reconcile',
 } as const
 
 export const JOB_EXPIRE_GRACE_SECONDS = 60
 
-// API tylko wysyła joby; utrzymanie kolejki (supervise, cron) robi wyłącznie Worker.
+// The API only sends jobs; queue maintenance (supervise, cron) is done by the Worker alone.
 export type BossRole = 'api' | 'worker'
 
 export function createBoss(role: BossRole): PgBoss {
@@ -33,10 +33,10 @@ export function createBoss(role: BossRole): PgBoss {
 const queueDefinitions: Queue[] = [
   {
     name: QUEUES.execute,
-    // Najwyżej jeden job w stanie created/retry/active na singletonKey (= jeden termin zadania).
+    // At most one job in created/retry/active state per singletonKey (= one run of a task).
     policy: 'exclusive',
-    // Twardy limit pg-boss jest dłuższy od timeoutu akcji, który egzekwuje executor — wynik
-    // zapisujemy sami, a wygaśnięcie joba zostaje na wypadek, gdy worker przestał działać.
+    // The hard pg-boss limit is longer than the action timeout enforced by the executor — we record
+    // the result ourselves, and job expiry remains for the case when the worker stopped working.
     expireInSeconds: config.jobs.timeoutSeconds + JOB_EXPIRE_GRACE_SECONDS,
     retryLimit: config.jobs.retryLimit,
     retryDelay: config.jobs.retryDelaySeconds,
@@ -45,7 +45,7 @@ const queueDefinitions: Queue[] = [
   },
   {
     name: QUEUES.reconcile,
-    // Nie kumuluj przebiegów, gdy poprzedni jeszcze trwa.
+    // Do not pile up runs while the previous one is still in progress.
     policy: 'exclusive',
     expireInSeconds: 120,
     retryLimit: 0,
@@ -53,7 +53,7 @@ const queueDefinitions: Queue[] = [
   },
 ]
 
-// createQueue nie nadpisuje istniejącej kolejki, więc zmiany z env aplikujemy przez updateQueue.
+// createQueue does not overwrite an existing queue, so changes from env are applied with updateQueue.
 export async function ensureQueues(boss: PgBoss): Promise<void> {
   for (const { name, policy, partition, ...options } of queueDefinitions) {
     const existing = await boss.getQueue(name)
@@ -65,7 +65,7 @@ export async function ensureQueues(boss: PgBoss): Promise<void> {
   }
 }
 
-/** Pozwala wykonać operację pg-boss w transakcji otwartej na kliencie `pg`. */
+/** Lets a pg-boss operation run inside a transaction opened on a `pg` client. */
 export function bossDb(client: PoolClient): Db {
   return { executeSql: (text, values) => client.query(text, values) }
 }

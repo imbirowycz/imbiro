@@ -1,7 +1,7 @@
 import { CronExpressionParser } from 'cron-parser'
 import type { CronScheduleConfig, IntervalScheduleConfig, ScheduleType } from '@myorg/shared'
 
-// Czyste funkcje liczenia terminów — bez bazy i bez pg-boss.
+// Pure functions that compute run times — no database and no pg-boss.
 
 export type ScheduleSpec =
   | { scheduleType: 'once'; scheduleConfig: Record<string, never> }
@@ -14,7 +14,7 @@ export type ScheduleDefinition = ScheduleSpec & {
   timezone: string
 }
 
-// Jednorazowy termin może być minimalnie w przeszłości (opóźnienie żądania) — wtedy wykona się od razu.
+// A one-off run may be slightly in the past (request delay) — it then executes right away.
 export const ONCE_GRACE_MS = 60_000
 
 export const SCHEDULE_TYPES: readonly ScheduleType[] = ['once', 'cron', 'interval']
@@ -28,7 +28,7 @@ export function isValidTimeZone(timezone: string): boolean {
   }
 }
 
-/** Zwraca komunikat błędu albo null, gdy wyrażenie jest poprawne. */
+/** Returns an error message, or null when the expression is valid. */
 export function validateCronExpression(expression: string, timezone: string): string | null {
   if (expression.trim().split(/\s+/).length !== 5) {
     return 'Cron expression must have 5 fields: minute hour day-of-month month day-of-week'
@@ -41,7 +41,7 @@ export function validateCronExpression(expression: string, timezone: string): st
   }
 }
 
-/** Pierwszy termin ściśle późniejszy niż `after`, mieszczący się w [startAt, endAt]; null = brak. */
+/** First run strictly later than `after` that falls within [startAt, endAt]; null = none. */
 export function nextOccurrence(def: ScheduleDefinition, after: Date): Date | null {
   const candidate = rawNextOccurrence(def, after)
   if (!candidate) return null
@@ -65,7 +65,7 @@ function rawNextOccurrence(def: ScheduleDefinition, after: Date): Date | null {
     }
 
     case 'cron': {
-      // next() zwraca termin ściśle po currentDate, więc -1 ms dopuszcza termin równy startAt.
+      // next() returns a run strictly after currentDate, so -1 ms allows a run equal to startAt.
       const from = Math.max(afterMs, startMs - 1)
       const expression = CronExpressionParser.parse(def.scheduleConfig.expression, {
         currentDate: new Date(from),
@@ -76,15 +76,15 @@ function rawNextOccurrence(def: ScheduleDefinition, after: Date): Date | null {
   }
 }
 
-/** Termin planowany przy utworzeniu/zmianie/aktywacji zadania: najbliższy od `now`. */
+/** Run planned when a task is created/changed/enabled: the nearest one from `now`. */
 export function initialRunAt(def: ScheduleDefinition, now: Date): Date | null {
   const after = def.scheduleType === 'once' ? now.getTime() - ONCE_GRACE_MS : now.getTime() - 1
   return nextOccurrence(def, new Date(after))
 }
 
 /**
- * Termin po wykonaniu `slot`. Pominięte terminy (np. gdy worker nie działał) nie są nadrabiane:
- * zaległy termin wykonuje się raz, a kolejny liczony jest od teraz.
+ * Run after `slot` has executed. Missed runs (e.g. while the worker was down) are not made up:
+ * an overdue run executes once, and the next one is computed from now.
  */
 export function runAfter(def: ScheduleDefinition, slot: Date, now: Date): Date | null {
   const after = Math.max(slot.getTime(), now.getTime() - 1)

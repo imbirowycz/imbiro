@@ -8,16 +8,16 @@ import { runMigrations } from './migrate'
 import { runProcess } from './process'
 import { prepareAuth } from './modules/auth'
 
-// API tylko zapisuje zadania i wysyła joby do pg-boss; wykonuje je osobny proces Workera.
+// The API only stores tasks and sends jobs to pg-boss; a separate Worker process executes them.
 const boss = createBoss('api')
 let server: Server | undefined
 
 async function start(): Promise<void> {
-  // Brak/zła konfiguracja administratora zatrzymuje start, zamiast ujawnić się przy pierwszym logowaniu.
+  // A missing/bad administrator configuration stops startup instead of surfacing on the first login.
   await prepareAuth()
   await runMigrations()
   await boss.start({ attempts: 5 })
-  // Idempotentne; API może wystartować przed Workerem i od razu przyjmować zadania.
+  // Idempotent; the API may start before the Worker and accept tasks right away.
   await ensureQueues(boss)
 
   const app = createApp(composeApi(boss))

@@ -20,7 +20,7 @@ interface TaskRow {
   updated_at: Date
 }
 
-/** Wewnętrzna reprezentacja zadania (daty jako Date, z wersją harmonogramu). */
+/** Internal representation of a task (dates as Date, with the schedule version). */
 export type TaskRecord = ScheduleDefinition & {
   id: string
   title: string
@@ -106,7 +106,7 @@ export class TaskRepository {
     return result.rows[0] ? toRecord(result.rows[0]) : null
   }
 
-  /** Aktywne zadania z zaplanowanym terminem — do ponownej synchronizacji z kolejką. */
+  /** Enabled tasks with a planned run — for re-syncing with the queue. */
   async findPlanned(db: Queryable = pool): Promise<TaskRecord[]> {
     const result = await db.query<TaskRow>(
       'SELECT * FROM scheduled_tasks WHERE enabled AND next_run_at IS NOT NULL ORDER BY next_run_at'

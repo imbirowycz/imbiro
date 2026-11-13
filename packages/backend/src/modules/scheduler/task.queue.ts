@@ -2,37 +2,37 @@ import type { PgBoss, Db } from 'pg-boss'
 import { QUEUES } from '../../boss'
 import type { TaskRecord } from './task.repository'
 
-// Integracja harmonogramu z pg-boss: jeden zaplanowany termin zadania = jeden job w kolejce.
+// Schedule ↔ pg-boss integration: one planned run of a task = one job in the queue.
 
 export interface ScheduledJobData {
   trigger: 'schedule'
   taskId: string
-  /** ISO termin, którego dotyczy job. */
+  /** ISO time of the run this job is for. */
   scheduledFor: string
-  /** Wersja harmonogramu z chwili planowania; job ze starszą wersją jest pomijany. */
+  /** Schedule version at planning time; a job with an older version is skipped. */
   scheduleVersion: number
 }
 
 export interface ManualJobData {
   trigger: 'manual'
   taskId: string
-  /** Rekord task_executions utworzony razem z jobem. */
+  /** The task_executions record created together with the job. */
   executionId: string
 }
 
 export type ExecuteJobData = ScheduledJobData | ManualJobData
 
 /**
- * Klucz terminu. Kolejka ma politykę `exclusive`, więc pg-boss nie przyjmie drugiego joba
- * z tym samym kluczem, dopóki pierwszy czeka lub jest wykonywany — to chroni przed podwójnym
- * zaplanowaniem (np. równoległa edycja i reconcile).
+ * Key of a run. The queue has the `exclusive` policy, so pg-boss rejects a second job
+ * with the same key while the first one waits or runs — this protects against planning
+ * a run twice (e.g. a concurrent edit and reconcile).
  */
 export function slotKey(task: TaskRecord): string | null {
   if (!task.enabled || !task.nextRunAt) return null
   return `${task.id}:${task.scheduleVersion}:${task.nextRunAt.toISOString()}`
 }
 
-/** Dodaje job dla bieżącego terminu zadania. Zwraca id joba albo null (brak terminu / już w kolejce). */
+/** Adds a job for the task's current run. Returns the job id or null (no run / already queued). */
 export async function enqueueSlot(boss: PgBoss, task: TaskRecord, db?: Db): Promise<string | null> {
   const key = slotKey(task)
   if (!key || !task.nextRunAt) return null
@@ -47,9 +47,9 @@ export async function enqueueSlot(boss: PgBoss, task: TaskRecord, db?: Db): Prom
 }
 
 /**
- * Job ręcznego uruchomienia — ta sama kolejka i ten sam executor co terminy z harmonogramu.
- * Id joba nadajemy sami, żeby zapisać je w rekordzie wykonania w tej samej transakcji.
- * Klucz jest wymagany: przy polityce `exclusive` joby bez klucza blokowałyby się nawzajem.
+ * Job of a manual run — the same queue and the same executor as scheduled runs.
+ * We assign the job id ourselves to store it in the execution record in the same transaction.
+ * The key is required: with the `exclusive` policy jobs without a key would block each other.
  */
 export async function enqueueManualRun(
   boss: PgBoss,
@@ -63,7 +63,7 @@ export async function enqueueManualRun(
   if (!id) throw new Error(`Failed to enqueue manual run ${executionId}`)
 }
 
-/** Anuluje oczekujący job poprzedniego terminu. Brak joba nie jest błędem. */
+/** Cancels the waiting job of the previous run. A missing job is not an error. */
 export async function cancelSlot(boss: PgBoss, task: TaskRecord, db?: Db): Promise<void> {
   const key = slotKey(task)
   if (!key) return
@@ -75,8 +75,8 @@ export async function cancelSlot(boss: PgBoss, task: TaskRecord, db?: Db): Promi
 }
 
 /**
- * Doprowadza kolejkę do stanu zgodnego z zadaniem po zmianie. Anulowanie starego joba jest
- * porządkowe — nawet jeśli by się nie udało, worker pominie go po `scheduleVersion`.
+ * Brings the queue in line with the task after a change. Cancelling the old job is
+ * housekeeping — even if it failed, the worker would skip the job by `scheduleVersion`.
  */
 export async function syncSlot(
   boss: PgBoss,

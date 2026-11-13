@@ -2,7 +2,7 @@ import type { ErrorRequestHandler, NextFunction, Request, RequestHandler, Respon
 import type { ApiError } from '@myorg/shared'
 import { AppError, TooManyRequestsError } from './errors'
 
-/** Przekazuje błędy z async handlerów do middleware błędów. */
+/** Passes errors from async handlers to the error middleware. */
 export function asyncHandler<P extends Record<string, string> = Record<string, string>>(
   fn: (req: Request<P>, res: Response) => Promise<void>
 ): RequestHandler<P> {
@@ -16,7 +16,7 @@ export const notFoundHandler: RequestHandler = (req, res) => {
   res.status(404).json(body)
 }
 
-/** Jeden format błędów API: { error, details? }. */
+/** The single API error format: { error, details? }. */
 export const errorHandler: ErrorRequestHandler = (err, _req, res, _next: NextFunction) => {
   if (err instanceof AppError) {
     if (err instanceof TooManyRequestsError) res.setHeader('Retry-After', String(err.retryAfterSeconds))
@@ -24,7 +24,7 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, _next: NextFun
     res.status(err.status).json(body)
     return
   }
-  // Błędy express.json(): niepoprawny JSON, za duże body.
+  // express.json() errors: malformed JSON, body too large.
   const type = (err as { type?: string }).type
   if (type === 'entity.parse.failed') {
     res.status(400).json({ error: 'Malformed JSON body' } satisfies ApiError)

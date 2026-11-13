@@ -8,16 +8,16 @@ declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace Express {
     interface Request {
-      /** Aktywna sesja administratora (ustawiana przez loadSession). */
+      /** Active administrator session (set by loadSession). */
       auth?: AuthSession
-      /** Token z cookie — potrzebny tylko przy wylogowaniu. */
+      /** Token from the cookie — needed only for logout. */
       sessionToken?: string
     }
   }
 }
 
-// Prefiks __Host- (tylko przy Secure): przeglądarka przyjmie cookie wyłącznie z HTTPS,
-// bez atrybutu Domain i z Path=/ — nie da się go nadpisać z subdomeny.
+// The __Host- prefix (only with Secure): the browser accepts the cookie over HTTPS only,
+// without a Domain attribute and with Path=/ — a subdomain cannot overwrite it.
 export const SESSION_COOKIE = config.session.cookieSecure ? '__Host-imbiro_session' : 'imbiro_session'
 
 export function sessionCookieOptions(expires?: Date): CookieOptions {
@@ -30,7 +30,7 @@ export function sessionCookieOptions(expires?: Date): CookieOptions {
   }
 }
 
-/** Minimalny parser nagłówka Cookie (bez dodatkowej zależności). */
+/** Minimal Cookie header parser (no extra dependency). */
 export function readCookie(header: string | undefined, name: string): string | undefined {
   if (!header) return undefined
   for (const part of header.split(';')) {
@@ -47,7 +47,7 @@ export function readCookie(header: string | undefined, name: string): string | u
   return undefined
 }
 
-/** Wczytuje sesję z cookie i sprawdza ją w bazie przy każdym żądaniu. Nie wymaga logowania. */
+/** Loads the session from the cookie and checks it in the database on every request. Does not require login. */
 export function loadSession(sessions: SessionRepository) {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const token = readCookie(req.headers.cookie, SESSION_COOKIE)
@@ -58,7 +58,7 @@ export function loadSession(sessions: SessionRepository) {
         req.auth = session
         req.sessionToken = token
       } else {
-        // Wygasła albo unieważniona — usuwamy martwe cookie z przeglądarki.
+        // Expired or revoked — remove the dead cookie from the browser.
         res.clearCookie(SESSION_COOKIE, sessionCookieOptions())
       }
       next()
@@ -68,7 +68,7 @@ export function loadSession(sessions: SessionRepository) {
   }
 }
 
-/** Wymaga aktywnej sesji administratora (sprawdzonej w bazie przez loadSession). */
+/** Requires an active administrator session (checked in the database by loadSession). */
 export function requireAuth(req: Request, _res: Response, next: NextFunction): void {
   if (!req.auth) return next(new UnauthorizedError())
   next()
@@ -78,13 +78,13 @@ const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS'])
 export const CSRF_HEADER = 'x-csrf-token'
 
 /**
- * Ochrona CSRF (synchronizer token): operacje zmieniające stan muszą przesłać w nagłówku
- * token powiązany z sesją. Obca strona nie zna tokenu, a niestandardowego nagłówka nie
- * wyśle cross-origin bez zgody CORS. SameSite=Lax jest dodatkową, nie jedyną warstwą.
+ * CSRF protection (synchronizer token): state-changing requests must send, in a header,
+ * the token bound to the session. A foreign site does not know the token, and a custom header
+ * is not sent cross-origin without CORS consent. SameSite=Lax is an extra layer, not the only one.
  */
 export function csrfProtection(req: Request, _res: Response, next: NextFunction): void {
   if (SAFE_METHODS.has(req.method)) return next()
-  // Bez sesji nie ma czego chronić — requireAuth (albo handler) zwróci 401.
+  // Without a session there is nothing to protect — requireAuth (or the handler) answers 401.
   if (!req.auth) return next()
 
   const provided = Buffer.from(req.get(CSRF_HEADER) ?? '')
@@ -94,16 +94,16 @@ export function csrfProtection(req: Request, _res: Response, next: NextFunction)
   next()
 }
 
-/** Odpowiedzi API z danymi nie mogą trafiać do cache przeglądarki ani pośredników. */
+/** API responses with data must not end up in the browser cache or in intermediaries. */
 export function noStore(_req: Request, res: Response, next: NextFunction): void {
   res.setHeader('Cache-Control', 'no-store')
   next()
 }
 
 /**
- * Druga warstwa ochrony CSRF: operacja zmieniająca stan z nagłówkiem Origin musi pochodzić
- * z adresu samej aplikacji albo z dozwolonego frontendu. Żądania bez Origin (np. curl)
- * przechodzą dalej — chroni je token CSRF.
+ * Second layer of CSRF protection: a state-changing request with an Origin header must come
+ * from the application's own address or from an allowed frontend. Requests without Origin
+ * (e.g. curl) pass through — the CSRF token protects them.
  */
 export function originCheck(req: Request, _res: Response, next: NextFunction): void {
   if (SAFE_METHODS.has(req.method)) return next()

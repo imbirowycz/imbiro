@@ -11,11 +11,11 @@ import type { AuthSession, SessionRepository } from './session.repository'
 
 const loginSchema = z.object({
   login: z.string().trim().min(1).max(200),
-  // Górny limit chroni przed kosztownym hashowaniem ogromnych danych.
+  // The upper limit protects against expensive hashing of huge inputs.
   password: z.string().min(1).max(1024),
 })
 
-// Jeden komunikat dla złego loginu i złego hasła — nie zdradzamy, które się nie zgadza.
+// One message for a wrong login and a wrong password — we do not reveal which one is wrong.
 const INVALID_CREDENTIALS = 'Invalid login or password'
 
 function sessionInfo(session: AuthSession): AuthSessionInfo {
@@ -37,7 +37,7 @@ export function createAuthRouter(sessions: SessionRepository, limiter: LoginLimi
   router.post(
     '/login',
     asyncHandler(async (req, res) => {
-      // Tylko JSON: zwykły formularz HTML z obcej strony nie może wysłać tego typu treści.
+      // JSON only: a plain HTML form on a foreign site cannot send this content type.
       if (!req.is('application/json')) throw new UnsupportedMediaTypeError('Content-Type must be application/json')
       const parsed = loginSchema.safeParse(req.body)
       if (!parsed.success) throw new ValidationError('Login and password are required')
@@ -54,12 +54,12 @@ export function createAuthRouter(sessions: SessionRepository, limiter: LoginLimi
       const user = await verifyAdminCredentials(parsed.data.login, parsed.data.password)
       await limiter.record(ip, identifier, user !== null)
       if (!user) {
-        // Bez loginu w logu — ludzie czasem wpisują tam hasło.
+        // No login in the log — people sometimes type their password there.
         console.warn(`Auth: failed login (ip ${ip})`)
         throw new UnauthorizedError(INVALID_CREDENTIALS)
       }
 
-      // Zawsze nowa sesja (ochrona przed session fixation); poprzednia z tej przeglądarki jest usuwana.
+      // Always a new session (session fixation protection); the previous one from this browser is deleted.
       if (req.sessionToken) await sessions.deleteByToken(req.sessionToken)
       const { token, session } = await sessions.create({ ip, userAgent: req.get('user-agent') ?? null })
       void sessions.deleteExpired().catch(() => {})

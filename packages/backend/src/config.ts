@@ -1,10 +1,10 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
-// Jedno miejsce odczytu zmiennych środowiskowych dla procesu API i Workera.
+// The single place where environment variables are read, for both the API and the Worker process.
 
-// Lokalnie (poza produkcją) zmienne mogą leżeć w packages/backend/.env — plik jest w .gitignore.
-// Zmienne ustawione w środowisku mają pierwszeństwo przed plikiem.
+// Locally (outside production) variables may live in packages/backend/.env — the file is in .gitignore.
+// Variables set in the environment take precedence over the file.
 const localEnvFile = path.join(__dirname, '..', '.env')
 if (process.env.NODE_ENV !== 'production' && fs.existsSync(localEnvFile)) {
   process.loadEnvFile(localEnvFile)
@@ -52,11 +52,11 @@ export const config = {
   port: int('PORT', 3000, 1),
 
   http: {
-    // Liczba zaufanych reverse proxy przed API (Caddy = 1). Od tego zależy req.ip (limity logowania)
-    // i req.protocol. 0 = połączenie bezpośrednie; nagłówki X-Forwarded-* są wtedy ignorowane.
+    // Number of trusted reverse proxies in front of the API (Caddy = 1). It determines req.ip (login limits)
+    // and req.protocol. 0 = direct connection; X-Forwarded-* headers are then ignored.
     trustProxy: int('TRUST_PROXY', 0, 0),
-    // Originy frontendu inne niż adres samego API, którym wolno wołać API z przeglądarki (CORS)
-    // i wysyłać operacje zmieniające stan. Na produkcji frontend i API są pod jednym adresem — pusto.
+    // Frontend origins other than the API's own address that may call the API from a browser (CORS)
+    // and send state-changing requests. In production the frontend and the API share one address — empty.
     allowedOrigins: list('CORS_ORIGINS', isProduction ? [] : ['http://localhost:5173']),
   },
 
@@ -65,9 +65,9 @@ export const config = {
   },
 
   worker: {
-    // Liczba równoległych wykonań w jednym procesie Workera.
+    // Number of parallel executions in one Worker process.
     concurrency: int('WORKER_CONCURRENCY', 2, 1),
-    // Ile czekać na dokończenie aktywnych jobów przy zamykaniu.
+    // How long to wait for active jobs to finish on shutdown.
     shutdownTimeoutSeconds: int('WORKER_SHUTDOWN_TIMEOUT_SECONDS', 30, 1),
   },
 
@@ -78,8 +78,8 @@ export const config = {
     retryDelayMaxSeconds: int('JOB_RETRY_DELAY_MAX_SECONDS', 600, 1),
   },
 
-  // Jedyne konto administratora. Hasło wyłącznie jako hash Argon2id (npm run admin:hash).
-  // Odczytywane leniwie: Worker nie potrzebuje danych logowania.
+  // The only administrator account. The password only as an Argon2id hash (npm run admin:hash).
+  // Read lazily: the Worker does not need login data.
   get admin() {
     const passwordHash = required('ADMIN_PASSWORD_HASH')
     if (!passwordHash.startsWith('$argon2id$')) {
@@ -93,29 +93,29 @@ export const config = {
   },
 
   session: {
-    // Bezwzględny czas życia sesji od zalogowania (domyślnie 30 dni).
+    // Absolute session lifetime since login (30 days by default).
     ttlHours: int('SESSION_TTL_HOURS', 720, 1),
-    // Wygaśnięcie po braku aktywności (domyślnie 7 dni); każde żądanie do API przesuwa ten termin.
+    // Expiry after inactivity (7 days by default); every API request moves this deadline.
     idleMinutes: int('SESSION_IDLE_MINUTES', 10080, 1),
-    // Secure wymaga HTTPS; domyślnie włączone w produkcji.
+    // Secure requires HTTPS; on by default in production.
     cookieSecure: bool('SESSION_COOKIE_SECURE', isProduction),
   },
 
   loginLimits: {
     windowMinutes: int('LOGIN_WINDOW_MINUTES', 15, 1),
-    // Nieudane próby w oknie: z jednego IP dla jednego loginu / z jednego IP / dla jednego loginu ze wszystkich IP.
+    // Failed attempts within the window: from one IP for one login / from one IP / for one login from all IPs.
     maxPerIpAndLogin: int('LOGIN_MAX_FAILURES_PER_IP_LOGIN', 5, 1),
     maxPerIp: int('LOGIN_MAX_FAILURES_PER_IP', 20, 1),
     maxPerLogin: int('LOGIN_MAX_FAILURES_PER_LOGIN', 50, 1),
   },
 
-  // Integracje akcji są opcjonalne: brak konfiguracji = czytelny błąd przy wykonaniu akcji.
+  // Action integrations are optional: missing configuration = a clear error when the action runs.
   integrations: {
     smtp: process.env.SMTP_HOST
       ? {
           host: process.env.SMTP_HOST,
           port: int('SMTP_PORT', 587, 1),
-          // true = TLS od początku połączenia (zwykle port 465); false = STARTTLS.
+          // true = TLS from the start of the connection (usually port 465); false = STARTTLS.
           secure: process.env.SMTP_SECURE === 'true',
           user: process.env.SMTP_USER || undefined,
           password: process.env.SMTP_PASSWORD || undefined,

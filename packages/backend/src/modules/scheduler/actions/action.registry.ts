@@ -28,7 +28,7 @@ export class ActionRegistry {
     return [...this.handlers.values()].map(({ type, description }) => ({ type, description }))
   }
 
-  /** Walidacja konfiguracji przed zapisem zadania. Błędy mają ścieżki względem `actionConfig`. */
+  /** Config validation before a task is saved. Error paths are relative to `actionConfig`. */
   validateConfig(type: string, config: unknown): unknown {
     if (!this.has(type)) {
       throw new ValidationError('Invalid task definition', [
@@ -52,8 +52,8 @@ export class ActionRegistry {
   }
 }
 
-/** Pomocnik dla handlerów: walidacja schematem zod z błędami w formacie API. */
+/** Helper for handlers: validation with a zod schema, errors in the API format. */
 export function parseWith<T>(schema: z.ZodType<T>, config: unknown): T {
-  // Pusta ścieżka korzenia: rejestr dokleja potem prefiks `actionConfig`.
+  // Empty root path: the registry adds the `actionConfig` prefix afterwards.
   return parseOrThrow(schema, config, 'Invalid action config', '')
 }

@@ -13,9 +13,9 @@ interface CountsRow {
 export type LimitDecision = { allowed: true } | { allowed: false; retryAfterSeconds: number }
 
 /**
- * Limity nieudanych logowań w przesuwnym oknie czasu, trzymane w PostgreSQL (przetrwają restart).
- * Trzy wymiary: IP + login (typowe zgadywanie), samo IP (wiele loginów z jednego adresu)
- * i sam login (atak rozproszony z wielu adresów).
+ * Limits of failed logins in a sliding time window, kept in PostgreSQL (they survive a restart).
+ * Three dimensions: IP + login (typical guessing), IP alone (many logins from one address)
+ * and login alone (a distributed attack from many addresses).
  */
 export class LoginLimiter {
   async check(ip: string, identifier: string, db: Queryable = pool): Promise<LimitDecision> {
@@ -43,7 +43,7 @@ export class LoginLimiter {
 
     if (exceeded.length === 0) return { allowed: true }
 
-    // Blokada mija, gdy najstarsza nieudana próba wypadnie z okna.
+    // The block ends when the oldest failed attempt leaves the window.
     const unlockAt = Math.max(...exceeded.map((oldest) => oldest.getTime() + limits.windowMinutes * 60_000))
     return { allowed: false, retryAfterSeconds: Math.max(1, Math.ceil((unlockAt - Date.now()) / 1000)) }
   }
