@@ -1,5 +1,5 @@
 import cors from 'cors'
-import express from 'express'
+import express, { type Router } from 'express'
 import { config } from './core/config'
 import { errorHandler, notFoundHandler } from './core/http'
 import {
@@ -22,9 +22,13 @@ export interface AppDeps {
   scheduler: SchedulerService
   actions: ActionRegistry
   radar: RadarRouterDeps
+  /** Okazje: the admin API (behind the session). */
+  prices: Router
+  /** Okazje: the API of the home collector (its own token instead of the session). */
+  collector: Router
 }
 
-export function createApp({ sessions, loginLimiter, scheduler, actions, radar }: AppDeps): express.Express {
+export function createApp({ sessions, loginLimiter, scheduler, actions, radar, prices, collector }: AppDeps): express.Express {
   const app = express()
   app.disable('x-powered-by')
   app.set('trust proxy', config.http.trustProxy || false)
@@ -38,6 +42,9 @@ export function createApp({ sessions, loginLimiter, scheduler, actions, radar }:
       allowedHeaders: ['Content-Type', 'X-CSRF-Token'],
     })
   )
+  // The collector sends whole shop pages (gzip is inflated by express.json), hence its own body
+  // limit — and it is mounted before the session/CSRF chain, because it is not a browser.
+  app.use('/api/collector', noStore, express.json({ limit: '8mb' }), collector)
   app.use(express.json({ limit: '1mb' }))
 
   app.get('/health', (_req, res) => {
@@ -51,6 +58,7 @@ export function createApp({ sessions, loginLimiter, scheduler, actions, radar }:
   app.use('/api', requireAuth, csrfProtection)
   app.use('/api/scheduler', createSchedulerRouter(scheduler, actions))
   app.use('/api/radar', createRadarRouter(radar))
+  app.use('/api/prices', prices)
 
   app.use(notFoundHandler)
   app.use(errorHandler)

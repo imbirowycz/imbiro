@@ -1,6 +1,17 @@
 import type { PgBoss } from 'pg-boss'
 import type { AppDeps } from './app'
 import { LoginLimiter, SessionRepository } from './modules/auth'
+import { config } from './core/config'
+import {
+  createCollectorRouter,
+  createPricesRouter,
+  createPriceWatchAction,
+  PriceCheckProcessor,
+  PriceNotifier,
+  PriceQueue,
+  PricesRepository,
+  PricesService,
+} from './modules/prices'
 import {
   ArticleReader,
   createRadarDeliverAction,
@@ -36,6 +47,10 @@ function composeCore(boss: PgBoss) {
   const radarRunner = new ModuleRunner(radarRegistry)
   const readItems = new ReadItemsRepository()
 
+  // prices: checks are queued here and fetched by the home collector through the API
+  const priceRepo = new PricesRepository()
+  const priceQueue = new PriceQueue(boss)
+
   // scheduler
   // New action = a new file with a handler (in the module that owns the logic) + one line here.
   const actions = new ActionRegistry()
@@ -43,17 +58,21 @@ function composeCore(boss: PgBoss) {
     .register(createTelegramSendAction())
     .register(createReportGenerateAction())
     .register(createRadarDeliverAction({ registry: radarRegistry, runner: radarRunner, getReadKeys: () => readItems.listKeys() }))
-    .register(createDbCleanupAction({ sessions, loginLimiter, readItems }))
+    .register(createPriceWatchAction({ repo: priceRepo, queue: priceQueue }))
+    .register(createDbCleanupAction({ sessions, loginLimiter, readItems, priceObservations: priceRepo }))
   const tasks = new TaskRepository()
   const executions = new ExecutionRepository()
   const scheduler = new SchedulerService(boss, actions, tasks, executions)
 
-  return { sessions, loginLimiter, radarRegistry, radarRunner, readItems, actions, tasks, executions, scheduler }
+  return { sessions, loginLimiter, radarRegistry, radarRunner, readItems, priceRepo, priceQueue, actions, tasks, executions, scheduler }
 }
 
 /** Everything the Express app needs (see createApp). */
 export function composeApi(boss: PgBoss): AppDeps {
   const core = composeCore(boss)
+  const { priceRepo, priceQueue } = core
+  const priceNotifier = new PriceNotifier(priceRepo)
+  const { collectorToken, onlineWithinSeconds, ...collectorSettings } = config.prices
   return {
     sessions: core.sessions,
     loginLimiter: core.loginLimiter,
@@ -66,6 +85,14 @@ export function composeApi(boss: PgBoss): AppDeps {
       // Only the API reads articles; the Worker never does.
       reader: new ArticleReader({ allowedDomains: radarConfig.reader.allowedDomains }),
     },
+    prices: createPricesRouter(new PricesService(core.scheduler, core.tasks, priceRepo, priceQueue, onlineWithinSeconds), priceNotifier),
+    collector: createCollectorRouter({
+      token: collectorToken,
+      settings: collectorSettings,
+      queue: priceQueue,
+      repo: priceRepo,
+      processor: new PriceCheckProcessor(priceRepo, priceQueue, priceNotifier),
+    }),
   }
 }
 

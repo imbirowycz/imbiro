@@ -109,6 +109,18 @@ export const config = {
     maxPerLogin: int('LOGIN_MAX_FAILURES_PER_LOGIN', 50, 1),
   },
 
+  // Okazje: the home collector fetches shop pages and takes these limits from the server.
+  prices: {
+    // Shared secret of the collector (Authorization: Bearer). Unset = the collector API rejects everyone.
+    collectorToken: process.env.COLLECTOR_TOKEN || undefined,
+    pollSeconds: int('COLLECTOR_POLL_SECONDS', 20, 5),
+    domainGapSeconds: int('COLLECTOR_DOMAIN_GAP_SECONDS', 30, 0),
+    pageTimeoutSeconds: int('COLLECTOR_PAGE_TIMEOUT_SECONDS', 45, 5),
+    maxJobsPerClaim: int('COLLECTOR_MAX_JOBS_PER_CLAIM', 3, 1),
+    // The collector counts as online when it asked for work within this time.
+    onlineWithinSeconds: int('COLLECTOR_ONLINE_WITHIN_SECONDS', 120, 10),
+  },
+
   // Action integrations are optional: missing configuration = a clear error when the action runs.
   integrations: {
     smtp: process.env.SMTP_HOST

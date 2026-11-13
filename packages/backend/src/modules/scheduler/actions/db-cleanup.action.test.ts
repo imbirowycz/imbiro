@@ -23,6 +23,7 @@ function setup() {
     sessions: { deleteExpired: async () => 2 },
     loginLimiter: { deleteOld: async () => 3 },
     readItems: { deleteExpired: async () => 5 },
+    priceObservations: { deleteOld: async () => 4 },
   })
   return { action, queries }
 }
@@ -32,8 +33,8 @@ describe('db.cleanup', () => {
     const { action, queries } = setup()
     const result = await action.execute(context, action.validateConfig({}))
     assert.deepEqual(result, {
-      deleted: { radar_read_items: 5, admin_sessions: 2, login_attempts: 3, task_executions: 7 },
-      total: 17,
+      deleted: { radar_read_items: 5, admin_sessions: 2, login_attempts: 3, task_executions: 7, price_observations: 4 },
+      total: 21,
     })
     // Only finished runs older than the default 90 days, never the current execution.
     assert.equal(queries.length, 1)

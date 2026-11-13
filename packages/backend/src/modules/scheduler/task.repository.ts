@@ -138,4 +138,8 @@ export class TaskRepository {
     )
     return toRecord(result.rows[0])
   }
+
+  async delete(id: string, db: Queryable = pool): Promise<void> {
+    await db.query('DELETE FROM scheduled_tasks WHERE id = $1', [id])
+  }
 }

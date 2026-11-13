@@ -8,7 +8,7 @@ import type { ActionHandler } from './action.types'
 // The rules are the same ones the app already applies on the fly (e.g. on login): the owning
 // modules pass them in (see composition.ts), so this file does not reach into auth or radar.
 
-export const CLEANUP_TARGETS = ['radar_read_items', 'admin_sessions', 'login_attempts', 'task_executions'] as const
+export const CLEANUP_TARGETS = ['radar_read_items', 'admin_sessions', 'login_attempts', 'task_executions', 'price_observations'] as const
 export type CleanupTarget = (typeof CLEANUP_TARGETS)[number]
 
 const configSchema = z.strictObject({
@@ -30,11 +30,13 @@ export interface DbCleanupDeps {
   loginLimiter: { deleteOld(db: Queryable): Promise<number> }
   /** Expired "read" marks (radar). */
   readItems: { deleteExpired(db: Queryable): Promise<number> }
+  /** Old price measurements (prices). */
+  priceObservations: { deleteOld(db: Queryable): Promise<number> }
   db?: () => Queryable
 }
 
 export function createDbCleanupAction(deps: DbCleanupDeps): ActionHandler<DbCleanupConfig> {
-  const { sessions, loginLimiter, readItems } = deps
+  const { sessions, loginLimiter, readItems, priceObservations } = deps
   const db = deps.db ?? (() => pool)
 
   const rules: Record<CleanupTarget, (executionId: string, cfg: DbCleanupConfig) => Promise<number>> = {
@@ -44,6 +46,8 @@ export function createDbCleanupAction(deps: DbCleanupDeps): ActionHandler<DbClea
     admin_sessions: () => sessions.deleteExpired(db()),
     // Login attempts older than a day (the limits look at minutes).
     login_attempts: () => loginLimiter.deleteOld(db()),
+    // Failed measurements after 30 days, successful ones after a year.
+    price_observations: () => priceObservations.deleteOld(db()),
     // Finished runs only; pending/running ones and this very run are never touched.
     task_executions: async (executionId, cfg) => {
       const result = await db().query(
@@ -59,7 +63,7 @@ export function createDbCleanupAction(deps: DbCleanupDeps): ActionHandler<DbClea
 
   return {
     type: 'db.cleanup',
-    description: 'Czyści bazę: wygasłe oznaczenia radaru i sesje, stare próby logowania i historię wykonań',
+    description: 'Czyści bazę: wygasłe oznaczenia radaru i sesje, stare próby logowania, historię wykonań i stare pomiary cen',
     validateConfig: (raw) => parseWith(configSchema, raw ?? {}),
 
     async execute(context, cfg) {

@@ -8,7 +8,7 @@ import { ConflictError, NotFoundError, ValidationError } from '../../core/errors
 import type { ActionRegistry } from './actions/action.registry'
 import { initialRunAt } from './schedule.rules'
 import { ExecutionRepository, toExecutionDto } from './execution.repository'
-import { enqueueManualRun, enqueueSlot, syncSlot } from './task.queue'
+import { cancelSlot, enqueueManualRun, enqueueSlot, syncSlot } from './task.queue'
 import { TaskRepository, toTaskDto, type TaskRecord, type TaskWrite } from './task.repository'
 import { assertEditableFields, parseTaskDefinition, type TaskDefinition } from './task.validation'
 
@@ -44,6 +44,14 @@ export class SchedulerService {
   }
 
   async create(input: unknown): Promise<ScheduledTask> {
+    return withTransaction((client) => this.createWithin(client, input))
+  }
+
+  /**
+   * Creates a task inside the caller's transaction — for a module that owns "its" task
+   * (e.g. prices) and must change the task together with its own rows.
+   */
+  async createWithin(client: PoolClient, input: unknown): Promise<ScheduledTask> {
     const now = this.now()
     const body = assertEditableFields(input)
     // For cron/interval a missing startAt = from now; for once the time must be given explicitly.
@@ -52,41 +60,50 @@ export class SchedulerService {
     }
     const definition = this.parseDefinition(body)
     const nextRunAt = this.planOrReject(definition, now)
-
-    return withTransaction(async (client) => {
-      const created = await this.repository.insert(
-        { ...definition, nextRunAt, scheduleVersion: 1 },
-        client
-      )
-      await syncSlot(this.boss, null, created, bossDb(client))
-      return toTaskDto(created)
-    })
+    const created = await this.repository.insert({ ...definition, nextRunAt, scheduleVersion: 1 }, client)
+    await syncSlot(this.boss, null, created, bossDb(client))
+    return toTaskDto(created)
   }
 
   async update(id: string, input: unknown): Promise<ScheduledTask> {
+    return withTransaction((client) => this.updateWithin(client, id, input))
+  }
+
+  /** Edits a task inside the caller's transaction (see createWithin). */
+  async updateWithin(client: PoolClient, id: string, input: unknown): Promise<ScheduledTask> {
     assertUuid(id)
     const patch = assertEditableFields(input)
     if (Object.keys(patch).length === 0) throw new ValidationError('Nothing to update')
 
-    return withTransaction(async (client) => {
-      const previous = await this.lockTask(id, client)
-      // A changed schedule type without a new config must not inherit the old one.
-      if (patch.scheduleType !== undefined && patch.scheduleType !== previous.scheduleType && patch.scheduleConfig === undefined) {
-        throw new ValidationError('Invalid task definition', [
-          { path: 'scheduleConfig', message: 'Required when scheduleType changes' },
-        ])
-      }
-      // A changed action type without a new config does not inherit the old one either.
-      const merged = { ...toInput(previous), ...patch }
-      if (patch.actionType !== undefined && patch.actionType !== previous.actionType && patch.actionConfig === undefined) {
-        merged.actionConfig = {}
-      }
-      const definition = this.parseDefinition(merged)
-      const next = this.applyDefinition(previous, definition)
-      const updated = await this.repository.update(id, next, client)
-      await syncSlot(this.boss, previous, updated, bossDb(client))
-      return toTaskDto(updated)
-    })
+    const previous = await this.lockTask(id, client)
+    // A changed schedule type without a new config must not inherit the old one.
+    if (patch.scheduleType !== undefined && patch.scheduleType !== previous.scheduleType && patch.scheduleConfig === undefined) {
+      throw new ValidationError('Invalid task definition', [
+        { path: 'scheduleConfig', message: 'Required when scheduleType changes' },
+      ])
+    }
+    // A changed action type without a new config does not inherit the old one either.
+    const merged = { ...toInput(previous), ...patch }
+    if (patch.actionType !== undefined && patch.actionType !== previous.actionType && patch.actionConfig === undefined) {
+      merged.actionConfig = {}
+    }
+    const definition = this.parseDefinition(merged)
+    const next = this.applyDefinition(previous, definition)
+    const updated = await this.repository.update(id, next, client)
+    await syncSlot(this.boss, previous, updated, bossDb(client))
+    return toTaskDto(updated)
+  }
+
+  /**
+   * Deletes a task inside the caller's transaction: cancels its waiting job; the execution
+   * history goes with it (cascade). A job already running is skipped by the executor.
+   */
+  async deleteWithin(client: PoolClient, id: string): Promise<void> {
+    assertUuid(id)
+    const previous = await this.repository.findById(id, client, { forUpdate: true })
+    if (!previous) return
+    await cancelSlot(this.boss, previous, bossDb(client))
+    await this.repository.delete(id, client)
   }
 
   async enable(id: string): Promise<ScheduledTask> {

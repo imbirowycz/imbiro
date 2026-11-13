@@ -16,6 +16,12 @@ import type { HttpClient } from '../modules/radar/http/safe-fetch'
 import { createRadarRegistry } from '../modules/radar/radar.catalog'
 import type { ReadItemsRepository, ReadMark } from '../modules/radar/read-items.repository'
 import { ReaderBusyError, type ArticleReader } from '../modules/radar/reader/article-reader'
+import { createCollectorRouter, createPricesRouter } from '../modules/prices'
+import type { PriceCheckProcessor } from '../modules/prices/price-check.processor'
+import type { PriceNotifier } from '../modules/prices/price-notify'
+import type { PriceQueue } from '../modules/prices/price-queue'
+import type { PricesRepository } from '../modules/prices/prices.repository'
+import type { PricesService } from '../modules/prices/prices.service'
 import type { SchedulerService } from '../modules/scheduler/scheduler.service'
 
 // Characterization tests of the HTTP contract: status codes, headers and the error format of
@@ -192,7 +198,70 @@ function fakeRadar() {
   return { registry, runner, reader, readerState, readItems }
 }
 
+const COLLECTOR_TOKEN = 'collector-secret'
+const JOB_ID = '22222222-2222-4222-8222-222222222222'
+const SOURCE_ID = '33333333-3333-4333-8333-333333333333'
+const COLLECTOR_SETTINGS = { pollSeconds: 20, domainGapSeconds: 30, pageTimeoutSeconds: 45, maxJobsPerClaim: 3 }
+
+/** The prices module with its service, queue, repository and processor replaced by fakes. */
+function fakePrices() {
+  const item = { id: TASK_ID, name: 'Item' }
+  const state = { seen: [] as (string | null)[], completed: [] as unknown[][], processed: [] as unknown[], sourceEnabled: true, jobState: 'active' }
+  const service = {
+    async overview() {
+      return { collector: { lastSeenAt: null, hostname: null, online: false, queued: 0 }, shops: [], items: [item] }
+    },
+    async create(body: { name?: string }) {
+      if (!body.name) throw new ValidationError('Niepoprawny artykuł', [{ path: 'name', message: 'Podaj nazwę artykułu' }])
+      return item
+    },
+    async checkNow() {
+      return { enqueued: 1, sources: 1 }
+    },
+    async deleteSource() {
+      return item
+    },
+  }
+  const queue = {
+    async claim() {
+      return [{ id: JOB_ID, data: { sourceId: SOURCE_ID, reason: 'schedule' } }]
+    },
+    async find(id: string) {
+      return id === JOB_ID ? { id, state: state.jobState, data: { sourceId: SOURCE_ID, reason: 'schedule' } } : null
+    },
+    async complete(...args: unknown[]) {
+      state.completed.push(args)
+    },
+  }
+  const repo = {
+    async touchCollector(hostname: string | null) {
+      state.seen.push(hostname)
+    },
+    async findSource() {
+      return { id: SOURCE_ID, enabled: state.sourceEnabled, url: 'https://shop.test/p/1', definition: { version: 1, strategy: 'auto', fetch: { waitFor: '.price' } } }
+    },
+  }
+  const processor = {
+    async process(_job: unknown, result: unknown) {
+      state.processed.push(result)
+      return { ok: true, price: 99, offers: [] }
+    },
+  }
+  return {
+    state,
+    prices: createPricesRouter(service as unknown as PricesService, {} as PriceNotifier),
+    collector: createCollectorRouter({
+      token: COLLECTOR_TOKEN,
+      settings: COLLECTOR_SETTINGS,
+      queue: queue as unknown as PriceQueue,
+      repo: repo as unknown as PricesRepository,
+      processor: processor as unknown as PriceCheckProcessor,
+    }),
+  }
+}
+
 describe('HTTP API contract', () => {
+  const prices = fakePrices()
   const sessions = fakeSessions()
   const limiter = fakeLimiter()
   const scheduler = fakeScheduler()
@@ -226,6 +295,8 @@ describe('HTTP API contract', () => {
       sessions: sessions as unknown as SessionRepository,
       loginLimiter: limiter as unknown as LoginLimiter,
       radar: { registry: radar.registry, runner: radar.runner, reader: radar.reader, readItems: radar.readItems.store },
+      prices: prices.prices,
+      collector: prices.collector,
     })
     server = app.listen(0, '127.0.0.1')
     await new Promise((resolve) => server.once('listening', resolve))
@@ -246,7 +317,7 @@ describe('HTTP API contract', () => {
     })
 
     it('answers 401 for every /api path, existing or not', async () => {
-      for (const path of ['/api/scheduler/tasks', '/api/radar/dashboard', '/api/auth/me', '/api/nope']) {
+      for (const path of ['/api/scheduler/tasks', '/api/radar/dashboard', '/api/prices/overview', '/api/collector/nope', '/api/auth/me', '/api/nope']) {
         const res = await call(path, { anonymous: true })
         assert.equal(res.status, 401, path)
         assert.deepEqual(res.json, { error: 'Authentication required' }, path)
@@ -386,7 +457,7 @@ describe('HTTP API contract', () => {
     it('lists actions and tasks', async () => {
       const actions = await call('/api/scheduler/actions')
       assert.equal(actions.status, 200)
-      assert.deepEqual(actions.json.map((a: { type: string }) => a.type), ['email.send', 'telegram.send', 'report.generate', 'radar.deliver', 'db.cleanup'])
+      assert.deepEqual(actions.json.map((a: { type: string }) => a.type), ['email.send', 'telegram.send', 'report.generate', 'radar.deliver', 'price.watch', 'db.cleanup'])
       assert.deepEqual(Object.keys(actions.json[0]), ['type', 'description'])
 
       const tasks = await call('/api/scheduler/tasks')
@@ -574,6 +645,88 @@ describe('HTTP API contract', () => {
       assert.equal(busy.status, 429)
       assert.equal(busy.headers.get('retry-after'), '5')
       assert.deepEqual(busy.json, { error: 'Czytnik jest zajęty, spróbuj za chwilę' })
+    })
+  })
+
+  describe('prices routes', () => {
+    it('returns the overview and creates an item with 201 and a Location header', async () => {
+      const overview = await call('/api/prices/overview')
+      assert.equal(overview.status, 200)
+      assert.deepEqual(overview.json.items, [{ id: TASK_ID, name: 'Item' }])
+
+      const created = await call('/api/prices/items', { method: 'POST', body: { name: 'Item' } })
+      assert.equal(created.status, 201)
+      assert.equal(created.headers.get('location'), `/api/prices/items/${TASK_ID}`)
+
+      const invalid = await call('/api/prices/items', { method: 'POST', body: {} })
+      assert.equal(invalid.status, 400)
+      assert.deepEqual(invalid.json, { error: 'Niepoprawny artykuł', details: [{ path: 'name', message: 'Podaj nazwę artykułu' }] })
+    })
+
+    it('queues "check now" with 202 and returns the item after a source change', async () => {
+      const check = await call(`/api/prices/items/${TASK_ID}/check-now`, { method: 'POST' })
+      assert.equal(check.status, 202)
+      assert.deepEqual(check.json, { enqueued: 1, sources: 1 })
+
+      const removed = await call(`/api/prices/sources/${SOURCE_ID}`, { method: 'DELETE' })
+      assert.equal(removed.status, 200)
+      assert.deepEqual(removed.json, { id: TASK_ID, name: 'Item' })
+    })
+  })
+
+  describe('collector routes', () => {
+    const asCollector = (token = COLLECTOR_TOKEN) => ({ anonymous: true, method: 'POST', headers: { authorization: `Bearer ${token}` } })
+    const result = { jobId: JOB_ID, ok: true, httpStatus: 200, finalUrl: 'https://shop.test/p/1', html: '<html></html>', durationMs: 1200 }
+
+    it('requires the collector token — the admin session is not enough', async () => {
+      for (const init of [{ method: 'POST' }, asCollector('wrong-secret-x'), asCollector('')]) {
+        const res = await call('/api/collector/claim', { ...init, body: {} })
+        assert.equal(res.status, 401)
+        assert.deepEqual(res.json, { error: 'Authentication required' })
+      }
+    })
+
+    it('hands out jobs together with the limits and records that the collector was seen', async () => {
+      const res = await call('/api/collector/claim', { ...asCollector(), body: { hostname: 'laptop' } })
+      assert.equal(res.status, 200)
+      assert.deepEqual(res.json, {
+        settings: COLLECTOR_SETTINGS,
+        jobs: [{ jobId: JOB_ID, url: 'https://shop.test/p/1', waitFor: '.price' }],
+      })
+      assert.deepEqual(prices.state.seen, ['laptop'])
+    })
+
+    it('closes the job of a switched-off source instead of handing it out', async () => {
+      prices.state.sourceEnabled = false
+      const res = await call('/api/collector/claim', { ...asCollector(), body: {} })
+      prices.state.sourceEnabled = true
+      assert.deepEqual(res.json.jobs, [])
+      assert.deepEqual(prices.state.completed, [[JOB_ID, { skipped: 'source disabled' }]])
+    })
+
+    it('processes the result of an active job and rejects stale or invalid ones', async () => {
+      const ok = await call('/api/collector/results', { ...asCollector(), body: result })
+      assert.equal(ok.status, 200)
+      assert.deepEqual(ok.json, { ok: true, price: 99, offers: [] })
+      assert.equal(prices.state.processed.length, 1)
+
+      prices.state.jobState = 'completed'
+      const stale = await call('/api/collector/results', { ...asCollector(), body: result })
+      prices.state.jobState = 'active'
+      assert.equal(stale.status, 409)
+
+      const unknown = await call('/api/collector/results', { ...asCollector(), body: { ...result, jobId: TASK_ID } })
+      assert.equal(unknown.status, 409)
+
+      const invalid = await call('/api/collector/results', { ...asCollector(), body: { ...result, jobId: 'nope' } })
+      assert.equal(invalid.status, 400)
+      assert.equal(invalid.json.details[0].path, 'jobId')
+      assert.equal(prices.state.processed.length, 1)
+    })
+
+    it('accepts a page larger than the 1 MB limit of the rest of the API', async () => {
+      const res = await call('/api/collector/results', { ...asCollector(), body: { ...result, html: 'x'.repeat(2_000_000) } })
+      assert.equal(res.status, 200)
     })
   })
 

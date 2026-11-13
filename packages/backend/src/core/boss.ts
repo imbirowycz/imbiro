@@ -7,6 +7,9 @@ export const QUEUES = {
   execute: 'scheduler.execute',
   // Periodic (every minute) re-sync of planned runs with the queue — a safety net.
   reconcile: 'scheduler.reconcile',
+  // Okazje: one check of one price source. Nobody works this queue — the home collector
+  // claims jobs through the API (see modules/prices/collector.controller.ts).
+  priceCheck: 'prices.check',
 } as const
 
 export const JOB_EXPIRE_GRACE_SECONDS = 60
@@ -50,6 +53,18 @@ const queueDefinitions: Queue[] = [
     expireInSeconds: 120,
     retryLimit: 0,
     deleteAfterSeconds: 3600,
+  },
+  {
+    name: QUEUES.priceCheck,
+    // singletonKey = source (+ kind of check): checks of one source do not pile up.
+    policy: 'exclusive',
+    // A claimed job the collector never reported back (laptop went off) expires and is retried.
+    expireInSeconds: 300,
+    retryLimit: 2,
+    retryDelay: 60,
+    retryBackoff: true,
+    retryDelayMax: 900,
+    deleteAfterSeconds: 7 * 24 * 3600,
   },
 ]
 
