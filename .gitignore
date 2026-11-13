@@ -3,3 +3,7 @@ node_modules
 .env
 docs/SERVER.md
 dist
+# domowy agent: konfiguracja z tajnym tokenem
+packages/home-agent/config.json
+packages/home-agent/config.prod.json
+packages/home-agent/config.local.json

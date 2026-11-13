@@ -1,0 +1,13 @@
+{
+  "name": "@myorg/home-agent",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Domowy agent: wyjście do internetu z domowego IP dla serwera (docelowo serwis na TV z webOS). Bez zależności, kod zgodny ze starym Node.",
+  "main": "agent.js",
+  "scripts": {
+    "start": "node agent.js",
+    "dev": "node agent.js",
+    "prod": "node agent.js --config config.prod.json",
+    "test": "node --test"
+  }
+}

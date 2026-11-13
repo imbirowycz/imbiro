@@ -78,6 +78,18 @@ services:
     volumes:
       - browser_profile:/data
 
+  # Domowe wyjście: przekaźnik do domowego agenta (packages/home-agent, docelowo TV).
+  # Port 3300 tylko przez Caddy (/relay/*), proxy CONNECT 3128 tylko w sieci Dockera — bez `ports:`.
+  relay:
+    build:
+      context: .
+      dockerfile: packages/home-relay/Dockerfile
+    restart: unless-stopped
+    environment:
+      HOME_AGENT_TOKEN: ${HOME_AGENT_TOKEN:-}
+      HOME_PROXY_TOKEN: ${HOME_PROXY_TOKEN:-}
+    mem_limit: 128m
+
   frontend:
     build:
       context: .

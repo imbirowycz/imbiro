@@ -17,6 +17,11 @@
 		reverse_proxy backend:3000
 	}
 
+	# Domowy agent łączy się tu sam (Upgrade: imbiro-relay, x-api-key).
+	handle /relay/* {
+		reverse_proxy relay:3300
+	}
+
 	handle /health {
 		reverse_proxy backend:3000
 	}
