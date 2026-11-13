@@ -6,11 +6,7 @@
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "esModuleInterop": true,
-    "skipLibCheck": true,
-    "paths": {
-      "@myorg/shared": ["../shared/index.ts"],
-      "@myorg/shared/*": ["../shared/*"]
-    }
+    "skipLibCheck": true
   },
   "include": ["src/**/*"]
 }
