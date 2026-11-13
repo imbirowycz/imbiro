@@ -20,6 +20,7 @@ const CLEANUP_TARGETS = [
   { value: 'admin_sessions', label: 'Wygasłe sesje logowania', hint: 'po terminie albo bezczynne' },
   { value: 'login_attempts', label: 'Stare próby logowania', hint: 'starsze niż 1 dzień' },
   { value: 'task_executions', label: 'Historia wykonań zadań', hint: 'zakończone, starsze niż wybrana liczba dni' },
+  { value: 'price_observations', label: 'Okazje: stare pomiary cen', hint: 'nieudane po 30 dniach, udane po roku' },
 ]
 
 interface FormState {

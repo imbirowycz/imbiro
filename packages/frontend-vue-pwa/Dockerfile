@@ -8,6 +8,8 @@ COPY package.json package-lock.json* ./
 COPY packages/shared/package.json packages/shared/
 COPY packages/backend/package.json packages/backend/
 COPY packages/frontend-vue-pwa/package.json packages/frontend-vue-pwa/
+# Not built here; npm ci needs every workspace listed in the lockfile.
+COPY packages/collector/package.json packages/collector/
 
 RUN npm ci
 

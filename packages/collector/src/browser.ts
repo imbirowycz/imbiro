@@ -1,0 +1,62 @@
+import { type BrowserContext, chromium } from 'playwright-core'
+
+// Loads pages in a real, visible Chrome with a persistent profile — the only way that got
+// through the shops' anti-bot protection from a home connection (test of 2026-11-14).
+
+export interface LoadedPage {
+  httpStatus: number | null
+  finalUrl: string
+  html: string
+}
+
+export interface PageLoader {
+  load(url: string, options: { waitFor?: string; timeoutMs: number }): Promise<LoadedPage>
+  close(): Promise<void>
+}
+
+/** Time for prices rendered by JavaScript when the source names no selector to wait for. */
+const SETTLE_MS = 4_000
+
+export function createBrowserLoader(options: { profileDir: string; channel: string; headless: boolean }): PageLoader {
+  let context: BrowserContext | null = null
+
+  async function open(): Promise<BrowserContext> {
+    if (context) return context
+    const opened = await chromium.launchPersistentContext(options.profileDir, {
+      channel: options.channel,
+      headless: options.headless,
+      locale: 'pl-PL',
+      timezoneId: 'Europe/Warsaw',
+      viewport: null,
+    })
+    // The window was closed or the browser crashed: start a new one on the next page.
+    opened.on('close', () => {
+      if (context === opened) context = null
+    })
+    context = opened
+    return opened
+  }
+
+  return {
+    async load(url, { waitFor, timeoutMs }) {
+      const page = await (await open()).newPage()
+      try {
+        const response = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: timeoutMs })
+        if (waitFor) {
+          // A missing selector is not an error here — the server decides what the page means.
+          await page.waitForSelector(waitFor, { timeout: Math.min(timeoutMs, 15_000) }).catch(() => {})
+        } else {
+          await page.waitForTimeout(SETTLE_MS)
+        }
+        return { httpStatus: response?.status() ?? null, finalUrl: page.url(), html: await page.content() }
+      } finally {
+        await page.close().catch(() => {})
+      }
+    },
+
+    async close() {
+      await context?.close().catch(() => {})
+      context = null
+    },
+  }
+}

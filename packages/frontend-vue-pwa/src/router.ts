@@ -18,6 +18,7 @@ export const router = createRouter({
       component: () => import('./radar/ReaderPage.vue'),
       meta: { title: 'Czytanie' },
     },
+    { path: '/okazje', name: 'prices', component: () => import('./prices/PricesPage.vue'), meta: { title: 'Okazje' } },
     {
       path: '/scheduler/:taskId?',
       name: 'scheduler',

@@ -32,6 +32,14 @@ services:
       TRUST_PROXY: "1"
       # Frontend i API pod tym samym adresem — CORS niepotrzebny.
       CORS_ORIGINS: ""
+      # Okazje: sekret domowego zbieracza i limity, które serwer mu podaje.
+      COLLECTOR_TOKEN: ${COLLECTOR_TOKEN:-}
+      COLLECTOR_POLL_SECONDS: ${COLLECTOR_POLL_SECONDS:-20}
+      COLLECTOR_DOMAIN_GAP_SECONDS: ${COLLECTOR_DOMAIN_GAP_SECONDS:-30}
+      COLLECTOR_PAGE_TIMEOUT_SECONDS: ${COLLECTOR_PAGE_TIMEOUT_SECONDS:-45}
+      COLLECTOR_MAX_JOBS_PER_CLAIM: ${COLLECTOR_MAX_JOBS_PER_CLAIM:-3}
+      # Powiadomienia o okazjach wysyła API (po przyjęciu strony od zbieracza).
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
     depends_on:
       postgres:
         condition: service_healthy

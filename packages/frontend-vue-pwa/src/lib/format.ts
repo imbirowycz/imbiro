@@ -8,6 +8,7 @@ export const ACTION_LABELS: Record<string, string> = {
   'report.generate': 'Raport',
   'radar.deliver': 'Radar',
   'db.cleanup': 'Sprzątanie bazy',
+  'price.watch': 'Okazje',
 }
 
 export const STATUS_LABELS: Record<ExecutionStatus, string> = {

@@ -1,0 +1,22 @@
+{
+  "name": "@myorg/collector",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "start": "tsx src/main.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test \"src/**/*.test.ts\""
+  },
+  "dependencies": {
+    "@myorg/shared": "file:../shared",
+    "playwright-core": "1.65.1",
+    "tsx": "^4.23.15"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  }
+}

@@ -3,3 +3,6 @@ node_modules
 .env
 docs/SERVER.md
 dist
+# Home collector: Chrome profile (cookies)
+packages/collector/.profile
+packages/collector/collector.log
