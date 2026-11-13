@@ -4,7 +4,7 @@ import { config } from './config'
 import { pool } from './db'
 import { runMigrations } from './migrate'
 import { runProcess } from './process'
-import type { ExecuteJobData } from './modules/scheduler/scheduler.planner'
+import type { ExecuteJobData } from './modules/scheduler/task.queue'
 import { SchedulerExecutor } from './modules/scheduler/scheduler.executor'
 import { SchedulerService } from './modules/scheduler/scheduler.service'
 

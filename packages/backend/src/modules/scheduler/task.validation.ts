@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { ValidationError } from '../../errors'
 import { parseOrThrow } from '../../validation'
-import { isValidTimeZone, validateCronExpression, type ScheduleDefinition } from './schedule'
+import { isValidTimeZone, validateCronExpression, type ScheduleDefinition } from './schedule.rules'
 
 // Format zgodny z CHECK w bazie, np. "email.send".
 const ACTION_TYPE_RE = /^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$/
@@ -79,7 +79,7 @@ export function parseTaskDefinition(input: unknown): TaskDefinition {
 }
 
 /** Odrzuca nieznane pola i nie-obiekty, zanim body zostanie scalone z istniejącym zadaniem. */
-export function assertPatchShape(input: unknown): Record<string, unknown> {
+export function assertEditableFields(input: unknown): Record<string, unknown> {
   if (typeof input !== 'object' || input === null || Array.isArray(input)) {
     throw new ValidationError('Request body must be a JSON object')
   }

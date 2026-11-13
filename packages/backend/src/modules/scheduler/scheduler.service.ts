@@ -6,11 +6,11 @@ import { bossDb } from '../../boss'
 import { withTransaction } from '../../db'
 import { ConflictError, NotFoundError, ValidationError } from '../../errors'
 import { actionRegistry, type ActionRegistry } from './actions'
-import { initialRunAt } from './schedule'
+import { initialRunAt } from './schedule.rules'
 import { ExecutionRepository, toExecutionDto } from './execution.repository'
-import { enqueueManualRun, enqueueSlot, syncSlot } from './scheduler.planner'
-import { SchedulerRepository, toDto, type TaskRecord, type TaskWrite } from './scheduler.repository'
-import { assertPatchShape, parseTaskDefinition, type TaskDefinition } from './scheduler.validation'
+import { enqueueManualRun, enqueueSlot, syncSlot } from './task.queue'
+import { TaskRepository, toTaskDto, type TaskRecord, type TaskWrite } from './task.repository'
+import { assertEditableFields, parseTaskDefinition, type TaskDefinition } from './task.validation'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -23,17 +23,17 @@ export class SchedulerService {
   constructor(
     private readonly boss: PgBoss,
     private readonly actions: ActionRegistry = actionRegistry,
-    private readonly repository = new SchedulerRepository(),
+    private readonly repository = new TaskRepository(),
     private readonly executions = new ExecutionRepository(),
     private readonly now: () => Date = () => new Date()
   ) {}
 
   async list(): Promise<ScheduledTask[]> {
-    return (await this.repository.findAll()).map(toDto)
+    return (await this.repository.findAll()).map(toTaskDto)
   }
 
   async get(id: string): Promise<ScheduledTask> {
-    return toDto(await this.getRecord(id))
+    return toTaskDto(await this.getRecord(id))
   }
 
   async getRecord(id: string): Promise<TaskRecord> {
@@ -45,7 +45,7 @@ export class SchedulerService {
 
   async create(input: unknown): Promise<ScheduledTask> {
     const now = this.now()
-    const body = assertPatchShape(input)
+    const body = assertEditableFields(input)
     // Dla cron/interval brak startAt = od teraz; dla once termin musi być podany wprost.
     if (body.startAt === undefined && body.scheduleType !== 'once') {
       body.startAt = now.toISOString()
@@ -59,13 +59,13 @@ export class SchedulerService {
         client
       )
       await syncSlot(this.boss, null, created, bossDb(client))
-      return toDto(created)
+      return toTaskDto(created)
     })
   }
 
   async update(id: string, input: unknown): Promise<ScheduledTask> {
     assertUuid(id)
-    const patch = assertPatchShape(input)
+    const patch = assertEditableFields(input)
     if (Object.keys(patch).length === 0) throw new ValidationError('Nothing to update')
 
     return withTransaction(async (client) => {
@@ -85,7 +85,7 @@ export class SchedulerService {
       const next = this.applyDefinition(previous, definition)
       const updated = await this.repository.update(id, next, client)
       await syncSlot(this.boss, previous, updated, bossDb(client))
-      return toDto(updated)
+      return toTaskDto(updated)
     })
   }
 
@@ -93,7 +93,7 @@ export class SchedulerService {
     assertUuid(id)
     return withTransaction(async (client) => {
       const previous = await this.lockTask(id, client)
-      if (previous.enabled) return toDto(previous)
+      if (previous.enabled) return toTaskDto(previous)
 
       const nextRunAt = initialRunAt(previous, this.now())
       if (!nextRunAt) {
@@ -105,7 +105,7 @@ export class SchedulerService {
         client
       )
       await syncSlot(this.boss, previous, updated, bossDb(client))
-      return toDto(updated)
+      return toTaskDto(updated)
     })
   }
 
@@ -113,7 +113,7 @@ export class SchedulerService {
     assertUuid(id)
     return withTransaction(async (client) => {
       const previous = await this.lockTask(id, client)
-      if (!previous.enabled) return toDto(previous)
+      if (!previous.enabled) return toTaskDto(previous)
 
       const updated = await this.repository.update(
         id,
@@ -121,7 +121,7 @@ export class SchedulerService {
         client
       )
       await syncSlot(this.boss, previous, updated, bossDb(client))
-      return toDto(updated)
+      return toTaskDto(updated)
     })
   }
 

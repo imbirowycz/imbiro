@@ -1,6 +1,6 @@
 import type { ScheduleConfig, ScheduledTask, ScheduleType } from '@myorg/shared'
 import { pool, type Queryable } from '../../db'
-import type { ScheduleDefinition } from './schedule'
+import type { ScheduleDefinition } from './schedule.rules'
 
 interface TaskRow {
   id: string
@@ -56,7 +56,7 @@ function toRecord(row: TaskRow): TaskRecord {
   } as TaskRecord
 }
 
-export function toDto(task: TaskRecord): ScheduledTask {
+export function toTaskDto(task: TaskRecord): ScheduledTask {
   return {
     id: task.id,
     title: task.title,
@@ -92,7 +92,7 @@ function writeParams(task: TaskWrite): unknown[] {
   ]
 }
 
-export class SchedulerRepository {
+export class TaskRepository {
   async findAll(db: Queryable = pool): Promise<TaskRecord[]> {
     const result = await db.query<TaskRow>('SELECT * FROM scheduled_tasks ORDER BY created_at DESC')
     return result.rows.map(toRecord)

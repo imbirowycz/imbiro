@@ -4,9 +4,9 @@ import { config } from '../../config'
 import { withTransaction } from '../../db'
 import { actionRegistry, NonRetryableActionError, type ActionRegistry } from './actions'
 import { ExecutionRepository, type ExecutionRecord } from './execution.repository'
-import { runAfter } from './schedule'
-import { enqueueSlot, type ExecuteJobData, type ScheduledJobData } from './scheduler.planner'
-import { SchedulerRepository } from './scheduler.repository'
+import { runAfter } from './schedule.rules'
+import { enqueueSlot, type ExecuteJobData, type ScheduledJobData } from './task.queue'
+import { TaskRepository } from './task.repository'
 
 export class ActionTimeoutError extends Error {
   constructor(seconds: number) {
@@ -31,7 +31,7 @@ export class SchedulerExecutor {
   constructor(
     private readonly boss: PgBoss,
     private readonly actions: ActionRegistry = actionRegistry,
-    private readonly tasks = new SchedulerRepository(),
+    private readonly tasks = new TaskRepository(),
     private readonly executions = new ExecutionRepository(),
     private readonly timeoutSeconds = config.jobs.timeoutSeconds
   ) {}

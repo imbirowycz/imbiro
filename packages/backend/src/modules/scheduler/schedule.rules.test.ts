@@ -7,7 +7,7 @@ import {
   runAfter,
   validateCronExpression,
   type ScheduleDefinition,
-} from './schedule'
+} from './schedule.rules'
 
 const d = (iso: string) => new Date(iso)
 const iso = (date: Date | null) => date?.toISOString() ?? null

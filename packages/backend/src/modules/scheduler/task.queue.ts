@@ -1,6 +1,6 @@
 import type { PgBoss, Db } from 'pg-boss'
 import { QUEUES } from '../../boss'
-import type { TaskRecord } from './scheduler.repository'
+import type { TaskRecord } from './task.repository'
 
 // Integracja harmonogramu z pg-boss: jeden zaplanowany termin zadania = jeden job w kolejce.
 
