@@ -1,6 +1,6 @@
 import type { Transporter } from 'nodemailer'
 import { z } from 'zod'
-import { config } from '../../../config'
+import { config } from '../../../core/config'
 import { parseWith } from './action.registry'
 import type { ActionHandler } from './action.types'
 import { EmailSender, type SmtpSettings } from './delivery/email.client'

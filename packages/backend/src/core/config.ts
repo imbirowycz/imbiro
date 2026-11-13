@@ -5,7 +5,7 @@ import path from 'node:path'
 
 // Locally (outside production) variables may live in packages/backend/.env — the file is in .gitignore.
 // Variables set in the environment take precedence over the file.
-const localEnvFile = path.join(__dirname, '..', '.env')
+const localEnvFile = path.join(__dirname, '..', '..', '.env')
 if (process.env.NODE_ENV !== 'production' && fs.existsSync(localEnvFile)) {
   process.loadEnvFile(localEnvFile)
 }

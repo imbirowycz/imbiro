@@ -1,10 +1,10 @@
 import type { JobWithMetadata } from 'pg-boss'
-import { createBoss, ensureQueues, QUEUES } from './boss'
+import { createBoss, ensureQueues, QUEUES } from './core/boss'
 import { composeWorker } from './composition'
-import { config } from './config'
-import { pool } from './db'
-import { runMigrations } from './migrate'
-import { runProcess } from './process'
+import { config } from './core/config'
+import { pool } from './core/db'
+import { runMigrations } from './core/migrate'
+import { runProcess } from './core/process'
 import type { ExecuteJobData } from './modules/scheduler'
 
 // A process separate from Express: executes pg-boss jobs and maintains the queue.

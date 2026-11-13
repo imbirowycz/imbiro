@@ -1,6 +1,6 @@
 import type { z } from 'zod'
-import { ValidationError } from '../../../errors'
-import { parseOrThrow } from '../../../validation'
+import { ValidationError } from '../../../core/errors'
+import { parseOrThrow } from '../../../core/validation'
 import type { ActionHandler } from './action.types'
 
 export class ActionRegistry {

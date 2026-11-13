@@ -1,5 +1,5 @@
 import type { ScheduleConfig, ScheduledTask, ScheduleType } from '@myorg/shared'
-import { pool, type Queryable } from '../../db'
+import { pool, type Queryable } from '../../core/db'
 import type { ScheduleDefinition } from './schedule.rules'
 
 interface TaskRow {

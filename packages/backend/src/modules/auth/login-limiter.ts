@@ -1,5 +1,5 @@
-import { config } from '../../config'
-import { pool, type Queryable } from '../../db'
+import { config } from '../../core/config'
+import { pool, type Queryable } from '../../core/db'
 
 interface CountsRow {
   ip_login: number

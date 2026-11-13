@@ -3,7 +3,7 @@ import path from 'node:path'
 import { pool } from './db'
 
 // The *.sql files live outside src/, so the same path works with tsx (src/) and with the build (dist/).
-const migrationsDir = path.join(__dirname, '..', 'migrations')
+const migrationsDir = path.join(__dirname, '..', '..', 'migrations')
 
 // Fixed lock key — the backend and the worker may start at the same time.
 const MIGRATION_LOCK_KEY = 7_340_001

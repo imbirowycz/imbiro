@@ -1,7 +1,7 @@
 import { timingSafeEqual } from 'node:crypto'
 import type { CookieOptions, NextFunction, Request, Response } from 'express'
-import { config } from '../../config'
-import { ForbiddenError, UnauthorizedError } from '../../errors'
+import { config } from '../../core/config'
+import { ForbiddenError, UnauthorizedError } from '../../core/errors'
 import type { AuthSession, SessionRepository } from './session.repository'
 
 declare global {

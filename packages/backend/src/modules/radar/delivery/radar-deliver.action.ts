@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import type { RunTarget } from '@myorg/shared'
-import { config } from '../../../config'
+import { config } from '../../../core/config'
 import {
   ActionConfigurationError,
   EmailSender,

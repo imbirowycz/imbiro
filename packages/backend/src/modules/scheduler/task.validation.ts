@@ -1,6 +1,6 @@
 import { z } from 'zod'
-import { ValidationError } from '../../errors'
-import { parseOrThrow } from '../../validation'
+import { ValidationError } from '../../core/errors'
+import { parseOrThrow } from '../../core/validation'
 import { isValidTimeZone, validateCronExpression, type ScheduleDefinition } from './schedule.rules'
 
 // Format matching the CHECK constraint in the database, e.g. "email.send".

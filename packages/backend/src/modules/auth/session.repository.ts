@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from 'node:crypto'
-import { config } from '../../config'
-import { pool, type Queryable } from '../../db'
+import { config } from '../../core/config'
+import { pool, type Queryable } from '../../core/db'
 
 export interface AuthSession {
   /** SHA-256 of the token — the key in the database. */

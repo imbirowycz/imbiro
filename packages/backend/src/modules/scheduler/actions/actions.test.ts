@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import type { Transporter } from 'nodemailer'
-import { ValidationError } from '../../../errors'
+import { ValidationError } from '../../../core/errors'
 import { ActionRegistry } from './action.registry'
 import { ActionConfigurationError, NonRetryableActionError, type ActionContext, type ActionHandler } from './action.types'
 import { createEmailSendAction } from './email-send.action'

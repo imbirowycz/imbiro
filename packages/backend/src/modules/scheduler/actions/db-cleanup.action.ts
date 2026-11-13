@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { pool, type Queryable } from '../../../db'
+import { pool, type Queryable } from '../../../core/db'
 import { parseWith } from './action.registry'
 import type { ActionHandler } from './action.types'
 

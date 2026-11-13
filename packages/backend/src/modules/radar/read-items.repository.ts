@@ -1,4 +1,4 @@
-import { pool, type Queryable } from '../../db'
+import { pool, type Queryable } from '../../core/db'
 
 // News and alerts marked as read: hidden on the dashboard and skipped in the morning digest.
 // Keyed by `newsReadKey` / `alertReadKey` from @myorg/shared. Every mark has its own expiry,

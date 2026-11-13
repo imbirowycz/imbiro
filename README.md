@@ -110,7 +110,8 @@ packages/backend/src/
   worker.ts        proces Workera (wykonuje joby z pg-boss)
   composition.ts   jedyne miejsce, w którym moduły są ze sobą łączone
   app.ts           middleware i podpięcie routerów
-  config.ts, db.ts, boss.ts, migrate.ts, errors.ts, http.ts, validation.ts, process.ts   infrastruktura
+  core/            infrastruktura wspólna dla modułów: config, db, boss (pg-boss), migrate,
+                   errors, http, validation, process
   modules/
     auth/          logowanie, sesje, CSRF, limity logowań
     radar/         Personal Radar (opis: docs/RADAR.md)
@@ -126,7 +127,7 @@ Zasady, których trzyma się kod:
   (np. `radar.deliver` leży w `radar/delivery/`), a listę akcji składa `composition.ts`.
 - **Warstwy w module:** `*.controller.ts` (trasy HTTP) → `*.service.ts` (reguły) → `*.repository.ts` (SQL).
   Repozytoria to klasy; metody przyjmują opcjonalnie klienta transakcji.
-- **Walidacja wejścia** schematami zod przez `parseOrThrow` (`validation.ts`), zwykle w kontrolerze.
+- **Walidacja wejścia** schematami zod przez `parseOrThrow` (`core/validation.ts`), zwykle w kontrolerze.
   Wyjątek: definicję zadania schedulera sprawdza serwis, bo poprawność `PATCH` zależy od zapisanego zadania.
 - **Testy** (`npm test --workspace=@myorg/backend`) nie potrzebują bazy ani `.env`;
   `app.http.test.ts` pilnuje kontraktu HTTP (statusy, nagłówki, format błędów).

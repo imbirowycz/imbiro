@@ -1,7 +1,7 @@
 import cors from 'cors'
 import express from 'express'
-import { config } from './config'
-import { errorHandler, notFoundHandler } from './http'
+import { config } from './core/config'
+import { errorHandler, notFoundHandler } from './core/http'
 import {
   createAuthRouter,
   csrfProtection,

@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto'
 import argon2 from 'argon2'
 import type { AdminUser } from '@myorg/shared'
-import { config } from '../../config'
+import { config } from '../../core/config'
 
 // Argon2id parameters: library defaults (m=64 MiB, t=3, p=4) — in line with OWASP recommendations.
 export function hashPassword(password: string): Promise<string> {

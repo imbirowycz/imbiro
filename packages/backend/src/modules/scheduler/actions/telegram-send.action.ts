@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { config } from '../../../config'
+import { config } from '../../../core/config'
 import { parseWith } from './action.registry'
 import { ActionConfigurationError, type ActionHandler } from './action.types'
 import { sendTelegramMessage, TELEGRAM_MAX_TEXT, telegramChatIdSchema } from './delivery/telegram.client'

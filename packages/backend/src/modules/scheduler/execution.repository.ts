@@ -1,5 +1,5 @@
 import type { ExecutionStatus, ExecutionTrigger, TaskExecution } from '@myorg/shared'
-import { pool, type Queryable } from '../../db'
+import { pool, type Queryable } from '../../core/db'
 
 interface ExecutionRow {
   id: string

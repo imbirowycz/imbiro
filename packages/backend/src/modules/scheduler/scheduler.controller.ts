@@ -1,6 +1,6 @@
 import { Router } from 'express'
-import { ValidationError } from '../../errors'
-import { asyncHandler } from '../../http'
+import { ValidationError } from '../../core/errors'
+import { asyncHandler } from '../../core/http'
 import type { ActionRegistry } from './actions/action.registry'
 import type { SchedulerService } from './scheduler.service'
 

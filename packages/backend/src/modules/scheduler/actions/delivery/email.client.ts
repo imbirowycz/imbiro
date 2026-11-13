@@ -1,5 +1,5 @@
 import nodemailer, { type Transporter } from 'nodemailer'
-import { config } from '../../../../config'
+import { config } from '../../../../core/config'
 import { ActionConfigurationError, NonRetryableActionError } from '../action.types'
 
 // SMTP sender shared by `email.send` and `radar.deliver`.

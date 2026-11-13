@@ -1,5 +1,5 @@
 import type { PgBoss, Db } from 'pg-boss'
-import { QUEUES } from '../../boss'
+import { QUEUES } from '../../core/boss'
 import type { TaskRecord } from './task.repository'
 
 // Schedule ↔ pg-boss integration: one planned run of a task = one job in the queue.

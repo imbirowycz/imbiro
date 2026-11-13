@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { ValidationError } from '../../../errors'
+import { ValidationError } from '../../../core/errors'
 import type { ActionContext } from './action.types'
 import { createDbCleanupAction } from './db-cleanup.action'
 

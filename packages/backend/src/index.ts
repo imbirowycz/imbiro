@@ -1,11 +1,11 @@
 import type { Server } from 'node:http'
 import { createApp } from './app'
-import { createBoss, ensureQueues } from './boss'
+import { createBoss, ensureQueues } from './core/boss'
 import { composeApi } from './composition'
-import { config } from './config'
-import { pool } from './db'
-import { runMigrations } from './migrate'
-import { runProcess } from './process'
+import { config } from './core/config'
+import { pool } from './core/db'
+import { runMigrations } from './core/migrate'
+import { runProcess } from './core/process'
 import { prepareAuth } from './modules/auth'
 
 // The API only stores tasks and sends jobs to pg-boss; a separate Worker process executes them.
