@@ -4,15 +4,15 @@ import { createBoss, ensureQueues } from './boss'
 import { config } from './config'
 import { pool } from './db'
 import { runMigrations } from './migrate'
+import { runProcess } from './process'
 import { prepareAuth } from './modules/auth/password'
 import { SchedulerService } from './modules/scheduler/scheduler.service'
 
 // API tylko zapisuje zadania i wysyła joby do pg-boss; wykonuje je osobny proces Workera.
 const boss = createBoss('api')
 let server: Server | undefined
-let shuttingDown = false
 
-async function main(): Promise<void> {
+async function start(): Promise<void> {
   // Brak/zła konfiguracja administratora zatrzymuje start, zamiast ujawnić się przy pierwszym logowaniu.
   await prepareAuth()
   await runMigrations()
@@ -26,29 +26,10 @@ async function main(): Promise<void> {
   })
 }
 
-async function shutdown(signal: string, exitCode = 0): Promise<void> {
-  if (shuttingDown) return
-  shuttingDown = true
-  console.log(`Backend received ${signal}, shutting down…`)
-
-  const forceExit = setTimeout(() => process.exit(1), 15_000)
-  forceExit.unref()
-
-  try {
-    if (server) await new Promise<void>((resolve) => server!.close(() => resolve()))
-    await boss.stop({ graceful: true, timeout: 5_000 })
-    await pool.end()
-  } catch (err) {
-    console.error('Error during backend shutdown', err)
-    exitCode = 1
-  }
-  process.exit(exitCode)
+async function stop(): Promise<void> {
+  if (server) await new Promise<void>((resolve) => server!.close(() => resolve()))
+  await boss.stop({ graceful: true, timeout: 5_000 })
+  await pool.end()
 }
 
-process.on('SIGTERM', () => void shutdown('SIGTERM'))
-process.on('SIGINT', () => void shutdown('SIGINT'))
-
-main().catch((err) => {
-  console.error('Backend failed to start', err)
-  void shutdown('startup failure', 1)
-})
+runProcess({ name: 'Backend', start, stop, forceExitAfterMs: 15_000 })

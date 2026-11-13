@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { alertReadKey, newsReadKey, READ_KEY_MAX_LENGTH, type RunTarget } from '@myorg/shared'
 import { NotFoundError, TooManyRequestsError, ValidationError } from '../../errors'
 import { asyncHandler } from '../../http'
+import { parseOrThrow } from '../../validation'
 import type { ModuleRegistry } from './core/module.registry'
 import { MAX_MODULES_PER_RUN, type ModuleRunner } from './core/module.runner'
 import { radarRegistry, radarRunner } from './radar.catalog'
@@ -51,14 +52,7 @@ const runManySchema = z.strictObject({
 })
 
 function parseBody<T>(schema: z.ZodType<T>, body: unknown): T {
-  const result = schema.safeParse(body ?? {})
-  if (!result.success) {
-    throw new ValidationError(
-      'Invalid request',
-      result.error.issues.map((issue) => ({ path: issue.path.map(String).join('.') || '(root)', message: issue.message }))
-    )
-  }
-  return result.data
+  return parseOrThrow(schema, body ?? {}, 'Invalid request')
 }
 
 /** Key and expiry of a mark — computed here with the same shared functions the frontend uses to hide items. */

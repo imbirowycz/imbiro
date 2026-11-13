@@ -1,5 +1,6 @@
 import type { z } from 'zod'
 import { ValidationError } from '../../../errors'
+import { parseOrThrow } from '../../../validation'
 import type { ActionHandler } from './action.types'
 
 export class ActionRegistry {
@@ -53,12 +54,6 @@ export class ActionRegistry {
 
 /** Pomocnik dla handlerów: walidacja schematem zod z błędami w formacie API. */
 export function parseWith<T>(schema: z.ZodType<T>, config: unknown): T {
-  const result = schema.safeParse(config)
-  if (!result.success) {
-    throw new ValidationError(
-      'Invalid action config',
-      result.error.issues.map((issue) => ({ path: issue.path.map(String).join('.'), message: issue.message }))
-    )
-  }
-  return result.data
+  // Pusta ścieżka korzenia: rejestr dokleja potem prefiks `actionConfig`.
+  return parseOrThrow(schema, config, 'Invalid action config', '')
 }

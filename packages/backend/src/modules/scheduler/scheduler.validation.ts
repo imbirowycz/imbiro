@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { ValidationError } from '../../errors'
+import { parseOrThrow } from '../../validation'
 import { isValidTimeZone, validateCronExpression, type ScheduleDefinition } from './schedule'
 
 // Format zgodny z CHECK w bazie, np. "email.send".
@@ -74,17 +75,7 @@ export const EDITABLE_FIELDS = [
 ] as const
 
 export function parseTaskDefinition(input: unknown): TaskDefinition {
-  const result = taskDefinitionSchema.safeParse(input)
-  if (!result.success) {
-    throw new ValidationError(
-      'Invalid task definition',
-      result.error.issues.map((issue) => ({
-        path: issue.path.map(String).join('.') || '(root)',
-        message: issue.message,
-      }))
-    )
-  }
-  return result.data as TaskDefinition
+  return parseOrThrow(taskDefinitionSchema, input, 'Invalid task definition') as TaskDefinition
 }
 
 /** Odrzuca nieznane pola i nie-obiekty, zanim body zostanie scalone z istniejącym zadaniem. */
