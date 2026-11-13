@@ -7,7 +7,7 @@ import { ActionConfigurationError, NonRetryableActionError, type ActionContext, 
 import { createEmailSendAction } from './email-send.action'
 import { createReportGenerateAction } from './report-generate.action'
 import { createTelegramSendAction } from './telegram-send.action'
-import { actionRegistry } from './index'
+import { createActionRegistry } from '../../../composition'
 
 const context: ActionContext = {
   taskId: '11111111-1111-1111-1111-111111111111',
@@ -19,6 +19,8 @@ const context: ActionContext = {
   signal: new AbortController().signal,
   log: () => {},
 }
+
+const actionRegistry = createActionRegistry()
 
 function detailsOf(fn: () => unknown): string[] {
   try {

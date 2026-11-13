@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { ValidationError } from '../../errors'
 import { asyncHandler } from '../../http'
-import { actionRegistry, type ActionRegistry } from './actions'
+import type { ActionRegistry } from './actions/action.registry'
 import type { SchedulerService } from './scheduler.service'
 
 type TaskParams = { id: string }
@@ -9,7 +9,7 @@ type TaskParams = { id: string }
 const DEFAULT_EXECUTIONS_LIMIT = 50
 const MAX_EXECUTIONS_LIMIT = 200
 
-export function createSchedulerRouter(service: SchedulerService, actions: ActionRegistry = actionRegistry): Router {
+export function createSchedulerRouter(service: SchedulerService, actions: ActionRegistry): Router {
   const router = Router()
 
   // Dostępne typy akcji — dla formularza na froncie.

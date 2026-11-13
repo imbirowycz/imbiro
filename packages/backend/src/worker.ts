@@ -1,18 +1,18 @@
 import type { JobWithMetadata } from 'pg-boss'
 import { createBoss, ensureQueues, QUEUES } from './boss'
+import { createActionRegistry } from './composition'
 import { config } from './config'
 import { pool } from './db'
 import { runMigrations } from './migrate'
 import { runProcess } from './process'
-import type { ExecuteJobData } from './modules/scheduler/task.queue'
-import { SchedulerExecutor } from './modules/scheduler/scheduler.executor'
-import { SchedulerService } from './modules/scheduler/scheduler.service'
+import { SchedulerExecutor, SchedulerService, type ExecuteJobData } from './modules/scheduler'
 
 // Osobny proces od Express: wykonuje joby z pg-boss i odpowiada za utrzymanie kolejki.
 
 const boss = createBoss('worker')
-const scheduler = new SchedulerService(boss)
-const executor = new SchedulerExecutor(boss)
+const actions = createActionRegistry()
+const scheduler = new SchedulerService(boss, actions)
+const executor = new SchedulerExecutor(boss, actions)
 
 async function reconcile(): Promise<void> {
   const enqueued = await scheduler.reconcile()

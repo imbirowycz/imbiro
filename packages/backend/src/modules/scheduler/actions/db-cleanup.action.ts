@@ -1,14 +1,12 @@
 import { z } from 'zod'
 import { pool, type Queryable } from '../../../db'
-import { LoginLimiter } from '../../auth/login-limiter'
-import { SessionRepository } from '../../auth/session.repository'
-import { createReadItemsRepository } from '../../radar/read-items.repository'
 import { parseWith } from './action.registry'
 import type { ActionHandler } from './action.types'
 
 // Periodic database housekeeping. Every target has a fixed, built-in rule — the config only picks
 // which targets run (never a table name or SQL), so a task cannot delete anything else.
-// The rules are the same ones the app already applies on the fly (e.g. on login), reused from there.
+// The rules are the same ones the app already applies on the fly (e.g. on login): the owning
+// modules pass them in (see composition.ts), so this file does not reach into auth or radar.
 
 export const CLEANUP_TARGETS = ['radar_read_items', 'admin_sessions', 'login_attempts', 'task_executions'] as const
 export type CleanupTarget = (typeof CLEANUP_TARGETS)[number]
@@ -26,17 +24,18 @@ const configSchema = z.strictObject({
 export type DbCleanupConfig = z.output<typeof configSchema>
 
 export interface DbCleanupDeps {
+  /** Expired or idle admin sessions (auth). */
+  sessions: { deleteExpired(db: Queryable): Promise<number> }
+  /** Old login attempts (auth). */
+  loginLimiter: { deleteOld(db: Queryable): Promise<number> }
+  /** Expired "read" marks (radar). */
+  readItems: () => { deleteExpired(): Promise<number> }
   db?: () => Queryable
-  sessions?: Pick<SessionRepository, 'deleteExpired'>
-  loginLimiter?: Pick<LoginLimiter, 'deleteOld'>
-  readItems?: () => { deleteExpired(): Promise<number> }
 }
 
-export function createDbCleanupAction(deps: DbCleanupDeps = {}): ActionHandler<DbCleanupConfig> {
+export function createDbCleanupAction(deps: DbCleanupDeps): ActionHandler<DbCleanupConfig> {
+  const { sessions, loginLimiter, readItems } = deps
   const db = deps.db ?? (() => pool)
-  const sessions = deps.sessions ?? new SessionRepository()
-  const loginLimiter = deps.loginLimiter ?? new LoginLimiter()
-  const readItems = deps.readItems ?? (() => createReadItemsRepository(db()))
 
   const rules: Record<CleanupTarget, (executionId: string, cfg: DbCleanupConfig) => Promise<number>> = {
     // Marks past their own expiry (news: 14 days, alerts: end of the alert + 1 day).

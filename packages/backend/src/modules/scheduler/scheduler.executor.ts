@@ -2,7 +2,8 @@ import type { JobWithMetadata, PgBoss } from 'pg-boss'
 import { bossDb, JOB_EXPIRE_GRACE_SECONDS, QUEUES } from '../../boss'
 import { config } from '../../config'
 import { withTransaction } from '../../db'
-import { actionRegistry, NonRetryableActionError, type ActionRegistry } from './actions'
+import type { ActionRegistry } from './actions/action.registry'
+import { NonRetryableActionError } from './actions/action.types'
 import { ExecutionRepository, type ExecutionRecord } from './execution.repository'
 import { runAfter } from './schedule.rules'
 import { enqueueSlot, type ExecuteJobData, type ScheduledJobData } from './task.queue'
@@ -30,7 +31,7 @@ const ACTIVE_JOB_STATES = new Set(['created', 'retry', 'active'])
 export class SchedulerExecutor {
   constructor(
     private readonly boss: PgBoss,
-    private readonly actions: ActionRegistry = actionRegistry,
+    private readonly actions: ActionRegistry,
     private readonly tasks = new TaskRepository(),
     private readonly executions = new ExecutionRepository(),
     private readonly timeoutSeconds = config.jobs.timeoutSeconds

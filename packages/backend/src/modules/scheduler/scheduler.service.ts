@@ -5,7 +5,7 @@ import type { ApiErrorDetail, ScheduledTask, TaskExecution } from '@myorg/shared
 import { bossDb } from '../../boss'
 import { withTransaction } from '../../db'
 import { ConflictError, NotFoundError, ValidationError } from '../../errors'
-import { actionRegistry, type ActionRegistry } from './actions'
+import type { ActionRegistry } from './actions/action.registry'
 import { initialRunAt } from './schedule.rules'
 import { ExecutionRepository, toExecutionDto } from './execution.repository'
 import { enqueueManualRun, enqueueSlot, syncSlot } from './task.queue'
@@ -22,7 +22,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 export class SchedulerService {
   constructor(
     private readonly boss: PgBoss,
-    private readonly actions: ActionRegistry = actionRegistry,
+    private readonly actions: ActionRegistry,
     private readonly repository = new TaskRepository(),
     private readonly executions = new ExecutionRepository(),
     private readonly now: () => Date = () => new Date()

@@ -2,11 +2,9 @@ import cors from 'cors'
 import express from 'express'
 import { config } from './config'
 import { errorHandler, notFoundHandler } from './http'
-import { createAuthRouter } from './modules/auth/auth.controller'
-import { csrfProtection, loadSession, noStore, originCheck, requireAuth } from './modules/auth/auth.middleware'
-import { createRadarRouter } from './modules/radar/radar.controller'
-import { createSchedulerRouter } from './modules/scheduler/scheduler.controller'
-import type { SchedulerService } from './modules/scheduler/scheduler.service'
+import { createAuthRouter, csrfProtection, loadSession, noStore, originCheck, requireAuth } from './modules/auth'
+import { createRadarRouter } from './modules/radar'
+import { createSchedulerRouter, type ActionRegistry, type SchedulerService } from './modules/scheduler'
 
 /** Optional replacements for the default collaborators (used by HTTP tests). */
 export interface AppOverrides {
@@ -15,7 +13,7 @@ export interface AppOverrides {
   radar?: Parameters<typeof createRadarRouter>
 }
 
-export function createApp(scheduler: SchedulerService, overrides: AppOverrides = {}): express.Express {
+export function createApp(scheduler: SchedulerService, actions: ActionRegistry, overrides: AppOverrides = {}): express.Express {
   const app = express()
   app.disable('x-powered-by')
   app.set('trust proxy', config.http.trustProxy || false)
@@ -40,7 +38,7 @@ export function createApp(scheduler: SchedulerService, overrides: AppOverrides =
   app.use('/api/auth', createAuthRouter(overrides.sessions, overrides.loginLimiter))
   // Wszystko inne pod /api wymaga sesji — także przyszłe moduły i nieistniejące ścieżki (401, nie 404).
   app.use('/api', requireAuth, csrfProtection)
-  app.use('/api/scheduler', createSchedulerRouter(scheduler))
+  app.use('/api/scheduler', createSchedulerRouter(scheduler, actions))
   app.use('/api/radar', createRadarRouter(...(overrides.radar ?? [])))
 
   app.use(notFoundHandler)

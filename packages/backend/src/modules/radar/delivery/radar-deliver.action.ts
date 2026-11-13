@@ -1,18 +1,22 @@
 import { z } from 'zod'
 import type { RunTarget } from '@myorg/shared'
 import { config } from '../../../config'
-import type { ModuleRegistry } from '../../radar/core/module.registry'
-import { MAX_MODULES_PER_RUN, type ModuleRunner } from '../../radar/core/module.runner'
-import { buildDigest, renderEmail, renderTelegram } from '../../radar/delivery/digest'
-import { radarRegistry, radarRunner } from '../../radar/radar.catalog'
-import { createReadItemsRepository } from '../../radar/read-items.repository'
-import { parseWith } from './action.registry'
-import { ActionConfigurationError, type ActionHandler } from './action.types'
-import { EmailSender } from './delivery/email.client'
-import { sendTelegramMessage, TELEGRAM_MAX_TEXT, telegramChatIdSchema } from './delivery/telegram.client'
+import {
+  ActionConfigurationError,
+  EmailSender,
+  parseWith,
+  sendTelegramMessage,
+  TELEGRAM_MAX_TEXT,
+  telegramChatIdSchema,
+  type ActionHandler,
+} from '../../scheduler'
+import type { ModuleRegistry } from '../core/module.registry'
+import { MAX_MODULES_PER_RUN, type ModuleRunner } from '../core/module.runner'
+import { buildDigest, renderEmail, renderTelegram } from './digest'
 
-// Adapter between Personal Radar and the existing scheduler: one action that runs radar
-// modules and delivers the result. The result is passed between the two steps in memory,
+// Adapter between Personal Radar and the scheduler: one action that runs radar modules and
+// delivers the result. It lives in the radar module and uses only the scheduler's public API,
+// so the scheduler itself knows nothing about the radar. The result is passed between the two steps in memory,
 // inside a single execution — the scheduler core and its contract stay unchanged.
 
 const targetSchema = z.discriminatedUnion('kind', [
@@ -63,21 +67,19 @@ function configSchema(registry: ModuleRegistry) {
 export type RadarDeliverConfig = z.output<ReturnType<typeof configSchema>>
 
 export interface RadarDeliverDeps {
-  registry?: ModuleRegistry
-  runner?: ModuleRunner
+  registry: ModuleRegistry
+  runner: ModuleRunner
+  /** Keys of news/alerts marked as read (skipped in the digest). */
+  getReadKeys: () => Promise<string[]>
   getTelegramToken?: () => string | undefined
   fetchImpl?: typeof fetch
   email?: EmailSender
-  /** Keys of news/alerts marked as read (skipped in the digest). */
-  getReadKeys?: () => Promise<string[]>
 }
 
-export function createRadarDeliverAction(deps: RadarDeliverDeps = {}): ActionHandler<RadarDeliverConfig> {
-  const registry = deps.registry ?? radarRegistry
-  const runner = deps.runner ?? radarRunner
+export function createRadarDeliverAction(deps: RadarDeliverDeps): ActionHandler<RadarDeliverConfig> {
+  const { registry, runner, getReadKeys } = deps
   const getTelegramToken = deps.getTelegramToken ?? (() => config.integrations.telegram.botToken)
   const email = deps.email ?? new EmailSender()
-  const getReadKeys = deps.getReadKeys ?? (() => createReadItemsRepository().listKeys())
   const schema = configSchema(registry)
 
   return {

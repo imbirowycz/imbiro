@@ -5,6 +5,7 @@ import { after, before, describe, it } from 'node:test'
 import argon2 from 'argon2'
 import { z } from 'zod'
 import { createApp } from './app'
+import { createActionRegistry } from './composition'
 import { NotFoundError, ValidationError } from './errors'
 import type { LoginLimiter } from './modules/auth/login-limiter'
 import type { AuthSession, SessionRepository } from './modules/auth/session.repository'
@@ -217,7 +218,7 @@ describe('HTTP API contract', () => {
 
   before(async () => {
     process.env.ADMIN_PASSWORD_HASH = await argon2.hash(PASSWORD, { type: argon2.argon2id })
-    const app = createApp(scheduler as unknown as SchedulerService, {
+    const app = createApp(scheduler as unknown as SchedulerService, createActionRegistry(), {
       sessions: sessions as unknown as SessionRepository,
       loginLimiter: limiter as unknown as LoginLimiter,
       radar: [radar.registry, radar.runner, radar.reader, radar.readItems.store],

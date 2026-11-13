@@ -32,7 +32,7 @@ API i Worker to **osobne procesy** — każdy ma własny rejestr, runner i cache
 | `ModuleRegistry` | `core/module.registry.ts` | katalog modułów i grup, walidacja przy starcie | |
 | `ModuleRunner` | `core/module.runner.ts` | uruchamia moduły (limit równoległości, timeout, anulowanie), waliduje elementy, zamienia błędy na `ModuleResult` ze statusem `error`, cache | nigdy nie rzuca z powodu modułu |
 | `ResultCache` | `core/result.cache.ts` | TTL, single-flight, minimalny odstęp wymuszonego odświeżenia, stale-if-error (ostatnie dobre dane do 6 h) | nie trwa po restarcie |
-| `radar.deliver` | `scheduler/actions/radar-deliver.action.ts` | adapter do schedulera: runner → digest → Telegram/e-mail | do `task_executions.result` trafia tylko podsumowanie |
+| `radar.deliver` | `delivery/radar-deliver.action.ts` | adapter do schedulera: runner → digest → Telegram/e-mail | do `task_executions.result` trafia tylko podsumowanie |
 
 ## Kontrakt wyniku
 
