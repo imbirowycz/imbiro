@@ -29,7 +29,7 @@ export interface DbCleanupDeps {
   /** Old login attempts (auth). */
   loginLimiter: { deleteOld(db: Queryable): Promise<number> }
   /** Expired "read" marks (radar). */
-  readItems: () => { deleteExpired(): Promise<number> }
+  readItems: { deleteExpired(db: Queryable): Promise<number> }
   db?: () => Queryable
 }
 
@@ -39,7 +39,7 @@ export function createDbCleanupAction(deps: DbCleanupDeps): ActionHandler<DbClea
 
   const rules: Record<CleanupTarget, (executionId: string, cfg: DbCleanupConfig) => Promise<number>> = {
     // Marks past their own expiry (news: 14 days, alerts: end of the alert + 1 day).
-    radar_read_items: () => readItems().deleteExpired(),
+    radar_read_items: () => readItems.deleteExpired(db()),
     // Expired or idle sessions — the same rule as on login.
     admin_sessions: () => sessions.deleteExpired(db()),
     // Login attempts older than a day (the limits look at minutes).

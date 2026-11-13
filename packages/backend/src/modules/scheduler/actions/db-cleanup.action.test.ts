@@ -22,7 +22,7 @@ function setup() {
     db: () => db as never,
     sessions: { deleteExpired: async () => 2 },
     loginLimiter: { deleteOld: async () => 3 },
-    readItems: () => ({ deleteExpired: async () => 5 }),
+    readItems: { deleteExpired: async () => 5 },
   })
   return { action, queries }
 }

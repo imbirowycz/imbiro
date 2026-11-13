@@ -5,9 +5,9 @@ import {
   ArticleReader,
   createRadarDeliverAction,
   createRadarRegistry,
-  createReadItemsRepository,
   ModuleRunner,
   radarConfig,
+  ReadItemsRepository,
 } from './modules/radar'
 import {
   ActionRegistry,
@@ -34,7 +34,7 @@ function composeCore(boss: PgBoss) {
   // radar: one registry and one runner (with its in-memory cache) per process
   const radarRegistry = createRadarRegistry()
   const radarRunner = new ModuleRunner(radarRegistry)
-  const readItems = createReadItemsRepository()
+  const readItems = new ReadItemsRepository()
 
   // scheduler
   // New action = a new file with a handler (in the module that owns the logic) + one line here.
@@ -43,7 +43,7 @@ function composeCore(boss: PgBoss) {
     .register(createTelegramSendAction())
     .register(createReportGenerateAction())
     .register(createRadarDeliverAction({ registry: radarRegistry, runner: radarRunner, getReadKeys: () => readItems.listKeys() }))
-    .register(createDbCleanupAction({ sessions, loginLimiter, readItems: () => readItems }))
+    .register(createDbCleanupAction({ sessions, loginLimiter, readItems }))
   const tasks = new TaskRepository()
   const executions = new ExecutionRepository()
   const scheduler = new SchedulerService(boss, actions, tasks, executions)

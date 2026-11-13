@@ -14,7 +14,7 @@ import { ModuleRunner } from './modules/radar/core/module.runner'
 import { defineModule } from './modules/radar/core/module.types'
 import type { HttpClient } from './modules/radar/http/safe-fetch'
 import { createRadarRegistry } from './modules/radar/radar.catalog'
-import type { ReadItemsStore, ReadMark } from './modules/radar/read-items.repository'
+import type { ReadItemsRepository, ReadMark } from './modules/radar/read-items.repository'
 import { ReaderBusyError, type ArticleReader } from './modules/radar/reader/article-reader'
 import type { SchedulerService } from './modules/scheduler/scheduler.service'
 
@@ -113,20 +113,20 @@ function fakeScheduler() {
 
 function fakeReadItems() {
   const marks = new Map<string, ReadMark>()
-  const store: ReadItemsStore = {
+  const store: ReadItemsRepository = {
     async listKeys() {
       return [...marks.keys()]
     },
-    async markRead(mark) {
+    async markRead(mark: ReadMark) {
       marks.set(mark.key, mark)
     },
-    async markManyRead(many) {
+    async markManyRead(many: ReadMark[]) {
       for (const mark of many) marks.set(mark.key, mark)
     },
-    async unmarkRead(key) {
+    async unmarkRead(key: string) {
       marks.delete(key)
     },
-    async unmarkManyRead(keys) {
+    async unmarkManyRead(keys: string[]) {
       for (const key of keys) marks.delete(key)
     },
     async deleteExpired() {
