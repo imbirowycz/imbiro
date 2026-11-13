@@ -8,7 +8,14 @@ import { createRadarRouter } from './modules/radar/radar.controller'
 import { createSchedulerRouter } from './modules/scheduler/scheduler.controller'
 import type { SchedulerService } from './modules/scheduler/scheduler.service'
 
-export function createApp(scheduler: SchedulerService): express.Express {
+/** Optional replacements for the default collaborators (used by HTTP tests). */
+export interface AppOverrides {
+  sessions?: Parameters<typeof createAuthRouter>[0]
+  loginLimiter?: Parameters<typeof createAuthRouter>[1]
+  radar?: Parameters<typeof createRadarRouter>
+}
+
+export function createApp(scheduler: SchedulerService, overrides: AppOverrides = {}): express.Express {
   const app = express()
   app.disable('x-powered-by')
   app.set('trust proxy', config.http.trustProxy || false)
@@ -28,13 +35,13 @@ export function createApp(scheduler: SchedulerService): express.Express {
     res.json({ ok: true })
   })
 
-  app.use('/api', noStore, originCheck, loadSession())
+  app.use('/api', noStore, originCheck, loadSession(overrides.sessions))
   // Publiczne są tylko logowanie i sprawdzenie sesji.
-  app.use('/api/auth', createAuthRouter())
+  app.use('/api/auth', createAuthRouter(overrides.sessions, overrides.loginLimiter))
   // Wszystko inne pod /api wymaga sesji — także przyszłe moduły i nieistniejące ścieżki (401, nie 404).
   app.use('/api', requireAuth, csrfProtection)
   app.use('/api/scheduler', createSchedulerRouter(scheduler))
-  app.use('/api/radar', createRadarRouter())
+  app.use('/api/radar', createRadarRouter(...(overrides.radar ?? [])))
 
   app.use(notFoundHandler)
   app.use(errorHandler)
