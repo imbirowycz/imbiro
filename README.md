@@ -130,7 +130,7 @@ Zasady, których trzyma się kod:
 - **Walidacja wejścia** schematami zod przez `parseOrThrow` (`core/validation.ts`), zwykle w kontrolerze.
   Wyjątek: definicję zadania schedulera sprawdza serwis, bo poprawność `PATCH` zależy od zapisanego zadania.
 - **Testy** (`npm test --workspace=@myorg/backend`) nie potrzebują bazy ani `.env`;
-  `app.http.test.ts` pilnuje kontraktu HTTP (statusy, nagłówki, format błędów).
+  `test/app.http.test.ts` pilnuje kontraktu HTTP (statusy, nagłówki, format błędów).
 
 ## Migracje bazy danych
 
