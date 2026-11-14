@@ -230,6 +230,8 @@ function collectProducts(data: unknown, out: Record<string, unknown>[], depth: n
   if (hasType(node, 'Product') || hasType(node, 'ProductGroup')) out.push(node)
   if (node['@graph']) collectProducts(node['@graph'], out, depth + 1)
   if (node.mainEntity) collectProducts(node.mainEntity, out, depth + 1)
+  // An action around the product, e.g. mediamarkt.pl: {"@type":"BuyAction","object":{ProductGroup}}.
+  if (node.object) collectProducts(node.object, out, depth + 1)
   if (node.hasVariant) collectProducts(node.hasVariant, out, depth + 1)
 }
 

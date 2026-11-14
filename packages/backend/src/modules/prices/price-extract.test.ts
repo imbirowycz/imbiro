@@ -24,6 +24,24 @@ test('auto: OpenGraph wins over microdata when JSON-LD is missing', () => {
   assert.equal(extraction.available, true)
 })
 
+test('auto: JSON-LD product wrapped in a BuyAction (mediamarkt.pl)', () => {
+  const ld = {
+    '@context': 'https://schema.org/',
+    '@type': 'BuyAction',
+    object: {
+      '@type': 'ProductGroup',
+      name: 'Telewizor LG 55QNED80B6B',
+      offers: { '@type': 'Offer', priceCurrency: 'PLN', price: 2499, availability: 'https://schema.org/InStock' },
+    },
+  }
+  const html = `<html><head><script type="application/ld+json">${JSON.stringify(ld)}</script></head><body></body></html>`
+  const { extraction } = extractProduct(html, { version: 1, strategy: 'auto' })
+  assert.equal(extraction.price, 2499)
+  assert.equal(extraction.available, true)
+  assert.equal(extraction.title, 'Telewizor LG 55QNED80B6B')
+  assert.equal(extraction.strategyUsed, 'jsonld')
+})
+
 test('auto: OpenGraph availability given as true/false (empik.com)', () => {
   const page = (value: string) =>
     `<html><head><meta property="product:price:amount" content="2436.99"><meta property="product:availability" content="${value}"></head><body></body></html>`
