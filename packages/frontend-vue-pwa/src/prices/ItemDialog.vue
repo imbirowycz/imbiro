@@ -52,6 +52,12 @@ function checkNow() {
   }, `Zlecono sprawdzenie. ${waiting()}`)
 }
 
+function checkSource(id: string, label: string) {
+  void perform(async () => {
+    await pricesApi.checkSource(id)
+  }, `Zlecono sprawdzenie źródła ${label}. ${waiting()}`)
+}
+
 function addSource(source: SavePriceSourceDTO) {
   void perform(() => pricesApi.addSource(props.item.id, source), `Dodano źródło ${source.label}. ${waiting()}`)
 }
@@ -105,6 +111,7 @@ watch(() => props.item.summary.lastCheckedAt, loadChanges)
               <span v-if="source.lastCheckedAt" class="muted" :title="dateTime(source.lastCheckedAt)">{{ relativeTime(source.lastCheckedAt, now) }}</span>
             </div>
             <div class="source-actions">
+              <button v-if="source.enabled" type="button" class="button ghost" :disabled="busy" @click="checkSource(source.id, source.label)">Sprawdź</button>
               <button type="button" class="button ghost" :disabled="busy" @click="perform(() => pricesApi.setSourceEnabled(source.id, !source.enabled))">
                 {{ source.enabled ? 'Wyłącz' : 'Włącz' }}
               </button>

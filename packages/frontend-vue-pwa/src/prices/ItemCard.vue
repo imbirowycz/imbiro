@@ -105,6 +105,7 @@ const emit = defineEmits<{ open: []; edit: []; toggle: []; remove: [] }>()
   gap: 0.5rem;
 }
 .price strong {
+  color: var(--signal);
   font-size: 1.25rem;
   font-variant-numeric: tabular-nums;
 }

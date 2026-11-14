@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import type { ArticleView } from '@myorg/shared'
 import { radarApi } from '../api/radar'
 import { markNewsRead } from './read-items'
+import { setPageTitle } from '../lib/title'
 
 // Reader mode: one article, fetched on demand, shown as plain readable text.
 // The HTML comes from the server already sanitized (structure and links only); the page CSP
@@ -73,7 +74,7 @@ async function load() {
       openOriginal()
       return
     }
-    if (article.value.title) document.title = `${article.value.title} – imbiro`
+    if (article.value.title) setPageTitle(article.value.title)
   } catch (err) {
     error.value = (err as Error).message
     openOriginal()

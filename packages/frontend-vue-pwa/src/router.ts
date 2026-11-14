@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { setPageTitle } from './lib/title'
 
 // History mode works in production because `serve -s` and the PWA service worker
 // fall back to index.html for unknown paths (API paths are excluded in vite.config.ts).
@@ -42,5 +43,5 @@ router.beforeEach((to) => {
 })
 
 router.afterEach((to) => {
-  document.title = to.meta.title ? `${String(to.meta.title)} – imbiro` : 'imbiro'
+  setPageTitle(to.meta.title ? String(to.meta.title) : null)
 })

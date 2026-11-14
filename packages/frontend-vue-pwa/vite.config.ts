@@ -15,7 +15,7 @@ export default defineConfig({
         // API nigdy nie jest obsługiwane z cache service workera.
         navigateFallbackDenylist: [/^\/api\//],
       },
-      includeAssets: ["icon.svg", "apple-touch-icon.png"],
+      includeAssets: ["icon.svg", "apple-touch-icon.png", "apple-touch-icon-v2.png"],
       manifest: {
         name: "imbiro",
         short_name: "imbiro",

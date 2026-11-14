@@ -139,6 +139,16 @@ export class PricesService {
     return this.get(source.itemId)
   }
 
+  /** "Check now" for one source — also a blocked one (the user asked explicitly). */
+  async checkSource(sourceId: string): Promise<{ enqueued: boolean }> {
+    const source = await this.source(sourceId)
+    // The claim skips disabled sources, so the job would vanish without a result.
+    if (!source.enabled) throw new ValidationError('Źródło jest wyłączone — włącz je, żeby sprawdzić', [])
+    // null = this source already waits in the queue; it will be checked anyway.
+    const jobId = await this.queue.enqueue({ sourceId: source.id, reason: 'now' })
+    return { enqueued: jobId !== null }
+  }
+
   async deleteSource(sourceId: string): Promise<PriceItem> {
     const source = await this.source(sourceId)
     await this.repo.deleteSource(source.id)

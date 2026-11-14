@@ -13,6 +13,7 @@ export const pricesApi = {
   changes: (id: string) => request<PriceChange[]>('GET', `/prices/items/${id}/changes`),
   addSource: (itemId: string, dto: SavePriceSourceDTO) => request<PriceItem>('POST', `/prices/items/${itemId}/sources`, dto),
   setSourceEnabled: (id: string, enabled: boolean) => request<PriceItem>('POST', `/prices/sources/${id}/${enabled ? 'enable' : 'disable'}`),
-  deleteSource: (id: string) => request<PriceItem>('DELETE', `/prices/sources/${id}`),
+  checkSource: (id: string) => request<{ enqueued: boolean }>('POST', `/prices/sources/${id}/check-now`),
+  deleteSource:(id: string) => request<PriceItem>('DELETE', `/prices/sources/${id}`),
   testNotification: (telegramChatId: string) => request<{ ok: true }>('POST', '/prices/notifications/test', { telegramChatId }),
 }

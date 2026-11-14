@@ -28,6 +28,10 @@ export function createBrowserLoader(options: { profileDir: string; channel: stri
       locale: 'pl-PL',
       timezoneId: 'Europe/Warsaw',
       viewport: null,
+      // Without these Chrome announces automation (navigator.webdriver = true, the
+      // "controlled by automated software" bar) and euro.com.pl answers 403 (2026-11-14).
+      ignoreDefaultArgs: ['--enable-automation'],
+      args: ['--disable-blink-features=AutomationControlled'],
     })
     // The window was closed or the browser crashed: start a new one on the next page.
     opened.on('close', () => {

@@ -111,6 +111,13 @@ export function createPricesRouter(service: PricesService, notifier: PriceNotifi
     })
   )
 
+  router.post(
+    '/sources/:id/check-now',
+    asyncHandler<IdParams>(async (req, res) => {
+      res.status(202).json(await service.checkSource(req.params.id))
+    })
+  )
+
   router.delete(
     '/sources/:id',
     asyncHandler<IdParams>(async (req, res) => {
