@@ -14,7 +14,7 @@ export function sourceState(source: PriceSource): { label: string; tone: SourceT
   if (!source.enabled) return { label: 'wyłączone', tone: 'idle' }
   switch (source.status) {
     case 'ok':
-      return source.lastAvailable === false ? { label: 'niedostępny', tone: 'warn' } : { label: 'pobrano', tone: 'ok' }
+      return source.lastAvailable === false ? { label: 'brak towaru', tone: 'warn' } : { label: 'pobrano', tone: 'ok' }
     case 'warning':
       return { label: 'nie pobrano', tone: 'warn' }
     case 'failing':
