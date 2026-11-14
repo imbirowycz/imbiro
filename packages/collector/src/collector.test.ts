@@ -10,13 +10,14 @@ const job = (jobId: string, url: string): CollectorJob => ({ jobId, url })
 function setup(jobs: CollectorJob[], load: (url: string) => Promise<{ httpStatus: number | null; finalUrl: string; html: string }>) {
   const reported: CollectorResult[] = []
   const sleeps: number[] = []
+  const closes = { count: 0 }
   let clock = 1_000_000
   const collector = new Collector({
     api: {
       claim: async () => ({ settings, jobs }),
       report: async (result) => void reported.push(result),
     },
-    loader: { load: (url) => load(url), close: async () => {} },
+    loader: { load: (url) => load(url), close: async () => void closes.count++ },
     assertAllowed: async (url) => {
       if (url.includes('192.168.')) throw new BlockedUrlError('Adres prowadzi do sieci prywatnej')
     },
@@ -27,7 +28,7 @@ function setup(jobs: CollectorJob[], load: (url: string) => Promise<{ httpStatus
     now: () => clock,
     log: () => {},
   })
-  return { collector, reported, sleeps }
+  return { collector, reported, sleeps, closes }
 }
 
 const okPage = async (url: string) => ({ httpStatus: 200, finalUrl: url, html: '<html>ok</html>' })
@@ -41,6 +42,20 @@ describe('Collector.cycle', () => {
       reported.map((r) => [r.jobId, r.ok, r.httpStatus, r.html]),
       [['a', true, 200, '<html>ok</html>'], ['b', true, 200, '<html>ok</html>']]
     )
+  })
+
+  it('closes the browser when the queue is drained, keeps it open while a full batch suggests more work', async () => {
+    const drained = setup([job('a', 'https://shop-a.test/p')], okPage)
+    await drained.collector.cycle(signal)
+    assert.equal(drained.closes.count, 1)
+
+    const idle = setup([], okPage)
+    await idle.collector.cycle(signal)
+    assert.equal(idle.closes.count, 1)
+
+    const full = setup([job('a', 'https://a.test/'), job('b', 'https://b.test/'), job('c', 'https://c.test/')], okPage)
+    await full.collector.cycle(signal)
+    assert.equal(full.closes.count, 0)
   })
 
   it('keeps the server-set gap between two pages of one domain only', async () => {

@@ -69,6 +69,9 @@ export class Collector {
       this.log(`${hostOf(job.url)} → ${result.ok ? `HTTP ${result.httpStatus}, ${result.html?.length ?? 0} znaków` : result.error?.code}`)
       await this.api.report(result)
     }
+    // Nothing left to fetch: close the browser instead of keeping an idle window open for hours.
+    // The next job starts it again (a second or two); cookies stay in the profile on disk.
+    if (jobs.length < settings.maxJobsPerClaim) await this.loader.close()
     return settings
   }
 
