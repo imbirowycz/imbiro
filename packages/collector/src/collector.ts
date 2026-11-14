@@ -19,16 +19,20 @@ export interface CollectorDeps {
   assertAllowed?: (url: string) => Promise<void>
   sleep?: (ms: number, signal: AbortSignal) => Promise<void>
   now?: () => number
+  /** 0..1, for the random gap between pages of one domain. */
+  random?: () => number
   log?: (message: string) => void
 }
 
 export class Collector {
-  private readonly lastHit = new Map<string, number>()
+  /** Per domain: the earliest time of its next page load. */
+  private readonly nextHit = new Map<string, number>()
   private readonly api: CollectorApi
   private readonly loader: PageLoader
   private readonly assertAllowed: (url: string) => Promise<void>
   private readonly sleep: (ms: number, signal: AbortSignal) => Promise<void>
   private readonly now: () => number
+  private readonly random: () => number
   private readonly log: (message: string) => void
 
   constructor(deps: CollectorDeps) {
@@ -37,6 +41,7 @@ export class Collector {
     this.assertAllowed = deps.assertAllowed ?? assertPublicUrl
     this.sleep = deps.sleep ?? abortableSleep
     this.now = deps.now ?? Date.now
+    this.random = deps.random ?? Math.random
     this.log = deps.log ?? ((message) => console.log(`${new Date().toISOString()} ${message}`))
   }
 
@@ -66,7 +71,7 @@ export class Collector {
     const { settings, jobs } = await this.api.claim()
     for (const job of jobs) {
       if (signal.aborted) break
-      await this.waitForDomain(job.url, settings.domainGapSeconds * 1000, signal)
+      await this.waitForDomain(job.url, settings, signal)
       const result = await this.fetch(job, settings.pageTimeoutSeconds * 1000)
       this.log(`${hostOf(job.url)} → ${result.ok ? `HTTP ${result.httpStatus}, ${result.html?.length ?? 0} znaków` : result.error?.code}`)
       await this.api.report(result)
@@ -102,12 +107,17 @@ export class Collector {
     }
   }
 
-  /** At most one page load per domain every `gapMs`. */
-  private async waitForDomain(url: string, gapMs: number, signal: AbortSignal): Promise<void> {
+  /**
+   * Pages of one domain are loaded with a gap drawn at random from the server's range — a fixed
+   * rhythm is what an automaton looks like. Other domains are not held back.
+   */
+  private async waitForDomain(url: string, settings: CollectorSettings, signal: AbortSignal): Promise<void> {
     const host = hostOf(url)
-    const wait = (this.lastHit.get(host) ?? -Infinity) + gapMs - this.now()
+    const wait = (this.nextHit.get(host) ?? -Infinity) - this.now()
     if (wait > 0) await this.sleep(wait, signal)
-    this.lastHit.set(host, this.now())
+    const min = settings.domainGapMinSeconds
+    const gapSeconds = min + this.random() * Math.max(0, settings.domainGapMaxSeconds - min)
+    this.nextHit.set(host, this.now() + gapSeconds * 1000)
   }
 }
 

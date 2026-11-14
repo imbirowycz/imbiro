@@ -4,7 +4,7 @@ import type { CollectorJob, CollectorResult, CollectorSettings } from '@myorg/sh
 import { Collector } from './collector'
 import { BlockedUrlError } from './ip-guard'
 
-const settings: CollectorSettings = { pollSeconds: 20, domainGapSeconds: 30, pageTimeoutSeconds: 45, maxJobsPerClaim: 3 }
+const settings: CollectorSettings = { pollSeconds: 20, domainGapMinSeconds: 30, domainGapMaxSeconds: 90, pageTimeoutSeconds: 45, maxJobsPerClaim: 3 }
 const job = (jobId: string, url: string): CollectorJob => ({ jobId, url })
 
 function setup(jobs: CollectorJob[], load: (url: string) => Promise<{ httpStatus: number | null; finalUrl: string; html: string }>) {
@@ -26,6 +26,7 @@ function setup(jobs: CollectorJob[], load: (url: string) => Promise<{ httpStatus
       clock += ms
     },
     now: () => clock,
+    random: () => 0.5,
     log: () => {},
   })
   return { collector, reported, sleeps, closes }
@@ -58,13 +59,14 @@ describe('Collector.cycle', () => {
     assert.equal(full.closes.count, 0)
   })
 
-  it('keeps the server-set gap between two pages of one domain only', async () => {
+  it('waits a random gap from the server-set range between two pages of one domain only', async () => {
     const { collector, sleeps } = setup(
       [job('a', 'https://www.shop.test/1'), job('b', 'https://other.test/1'), job('c', 'https://shop.test/2')],
       okPage
     )
     await collector.cycle(signal)
-    assert.deepEqual(sleeps, [30_000])
+    // random 0.5 of the 30–90 s range
+    assert.deepEqual(sleeps, [60_000])
   })
 
   it('reports a blocked page (HTTP 403) as loaded — the server judges what it means', async () => {

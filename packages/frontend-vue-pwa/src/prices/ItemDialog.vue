@@ -110,7 +110,10 @@ watch(() => props.item.summary.lastCheckedAt, loadChanges)
               </button>
               <button type="button" class="button ghost danger" :disabled="busy" @click="removeSource(source.id, source.label)">Usuń</button>
             </div>
-            <p v-if="source.enabled && source.lastError && source.status !== 'ok'" class="source-error">{{ source.lastError }}</p>
+            <p v-if="source.enabled && source.lastError && source.status !== 'ok'" class="source-error">
+              {{ source.lastError }}
+              <template v-if="source.status === 'blocked'"> — do odblokowania sprawdzane tylko raz na dobę.</template>
+            </p>
           </li>
         </ul>
         <p v-else class="muted">Ten artykuł nie ma jeszcze żadnego źródła.</p>

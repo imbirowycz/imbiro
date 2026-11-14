@@ -114,7 +114,9 @@ export const config = {
     // Shared secret of the collector (Authorization: Bearer). Unset = the collector API rejects everyone.
     collectorToken: process.env.COLLECTOR_TOKEN || undefined,
     pollSeconds: int('COLLECTOR_POLL_SECONDS', 60, 5),
-    domainGapSeconds: int('COLLECTOR_DOMAIN_GAP_SECONDS', 30, 0),
+    // Gap between two pages of one shop: random within this range, so the traffic has no fixed rhythm.
+    domainGapMinSeconds: int('COLLECTOR_DOMAIN_GAP_MIN_SECONDS', 30, 0),
+    domainGapMaxSeconds: int('COLLECTOR_DOMAIN_GAP_MAX_SECONDS', 90, 0),
     pageTimeoutSeconds: int('COLLECTOR_PAGE_TIMEOUT_SECONDS', 45, 5),
     maxJobsPerClaim: int('COLLECTOR_MAX_JOBS_PER_CLAIM', 3, 1),
     // The collector counts as online when it asked for work within this time.

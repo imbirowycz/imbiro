@@ -59,7 +59,8 @@ const queueDefinitions: Queue[] = [
     // singletonKey = source (+ kind of check): checks of one source do not pile up.
     policy: 'exclusive',
     // A claimed job the collector never reported back (laptop went off) expires and is retried.
-    expireInSeconds: 300,
+    // Long enough for a full batch of one shop: 3 pages, each up to 90 s of gap + 45 s of loading.
+    expireInSeconds: 600,
     retryLimit: 2,
     retryDelay: 60,
     retryBackoff: true,

@@ -35,7 +35,9 @@ services:
       # Okazje: sekret domowego zbieracza i limity, które serwer mu podaje.
       COLLECTOR_TOKEN: ${COLLECTOR_TOKEN:-}
       COLLECTOR_POLL_SECONDS: ${COLLECTOR_POLL_SECONDS:-60}
-      COLLECTOR_DOMAIN_GAP_SECONDS: ${COLLECTOR_DOMAIN_GAP_SECONDS:-30}
+      # Odstęp między stronami jednego sklepu: losowy z tego zakresu.
+      COLLECTOR_DOMAIN_GAP_MIN_SECONDS: ${COLLECTOR_DOMAIN_GAP_MIN_SECONDS:-30}
+      COLLECTOR_DOMAIN_GAP_MAX_SECONDS: ${COLLECTOR_DOMAIN_GAP_MAX_SECONDS:-90}
       COLLECTOR_PAGE_TIMEOUT_SECONDS: ${COLLECTOR_PAGE_TIMEOUT_SECONDS:-45}
       COLLECTOR_MAX_JOBS_PER_CLAIM: ${COLLECTOR_MAX_JOBS_PER_CLAIM:-3}
       # Cisza nocna zbieracza (pełne godziny, Europe/Warsaw); równe wartości = wyłączona.

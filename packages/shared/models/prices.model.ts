@@ -196,8 +196,9 @@ export interface PriceOverview {
 export interface CollectorSettings {
   /** Pause before the next "what should I fetch?" call (during quiet hours: until they end). */
   pollSeconds: number
-  /** Minimum gap between two page loads from one domain. */
-  domainGapSeconds: number
+  /** Gap between two page loads from one domain: drawn at random from this range each time. */
+  domainGapMinSeconds: number
+  domainGapMaxSeconds: number
   pageTimeoutSeconds: number
   maxJobsPerClaim: number
 }

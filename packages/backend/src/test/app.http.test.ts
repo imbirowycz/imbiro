@@ -201,7 +201,7 @@ function fakeRadar() {
 const COLLECTOR_TOKEN = 'collector-secret'
 const JOB_ID = '22222222-2222-4222-8222-222222222222'
 const SOURCE_ID = '33333333-3333-4333-8333-333333333333'
-const COLLECTOR_SETTINGS = { pollSeconds: 20, domainGapSeconds: 30, pageTimeoutSeconds: 45, maxJobsPerClaim: 3 }
+const COLLECTOR_SETTINGS = { pollSeconds: 20, domainGapMinSeconds: 30, domainGapMaxSeconds: 90, pageTimeoutSeconds: 45, maxJobsPerClaim: 3 }
 
 /** The prices module with its service, queue, repository and processor replaced by fakes. */
 function fakePrices() {

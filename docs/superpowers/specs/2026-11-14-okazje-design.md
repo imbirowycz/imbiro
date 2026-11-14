@@ -100,7 +100,7 @@ Typy w `packages/shared` (wspólne dla obu stron). Autoryzacja: `Authorization: 
 `POST /api/collector/claim` → 
 ```ts
 {
-  settings: { pollSeconds, domainGapSeconds, pageTimeoutSeconds, maxJobsPerClaim },
+  settings: { pollSeconds, domainGapMinSeconds, domainGapMaxSeconds, pageTimeoutSeconds, maxJobsPerClaim },
   jobs: [{ jobId, url, waitFor?: string }]   // 0..maxJobsPerClaim
 }
 ```
