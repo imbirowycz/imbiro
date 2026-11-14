@@ -11,6 +11,7 @@ import {
   PriceQueue,
   PricesRepository,
   PricesService,
+  quietSecondsLeft,
 } from './modules/prices'
 import {
   ArticleReader,
@@ -72,7 +73,8 @@ export function composeApi(boss: PgBoss): AppDeps {
   const core = composeCore(boss)
   const { priceRepo, priceQueue } = core
   const priceNotifier = new PriceNotifier(priceRepo)
-  const { collectorToken, onlineWithinSeconds, ...collectorSettings } = config.prices
+  const { collectorToken, onlineWithinSeconds, quietFromHour, quietToHour, ...collectorSettings } = config.prices
+  const quietSeconds = (now: Date) => quietSecondsLeft(now, { fromHour: quietFromHour, toHour: quietToHour, timeZone: 'Europe/Warsaw' })
   return {
     sessions: core.sessions,
     loginLimiter: core.loginLimiter,
@@ -85,10 +87,11 @@ export function composeApi(boss: PgBoss): AppDeps {
       // Only the API reads articles; the Worker never does.
       reader: new ArticleReader({ allowedDomains: radarConfig.reader.allowedDomains }),
     },
-    prices: createPricesRouter(new PricesService(core.scheduler, core.tasks, priceRepo, priceQueue, onlineWithinSeconds), priceNotifier),
+    prices: createPricesRouter(new PricesService(core.scheduler, core.tasks, priceRepo, priceQueue, onlineWithinSeconds, quietSeconds), priceNotifier),
     collector: createCollectorRouter({
       token: collectorToken,
       settings: collectorSettings,
+      quietSeconds,
       queue: priceQueue,
       repo: priceRepo,
       processor: new PriceCheckProcessor(priceRepo, priceQueue, priceNotifier),

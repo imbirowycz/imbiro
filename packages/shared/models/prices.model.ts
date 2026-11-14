@@ -178,6 +178,8 @@ export interface PriceCollectorStatus {
   lastSeenAt: string | null
   hostname: string | null
   online: boolean
+  /** Set during the collector's quiet hours: it does not call the server until then. */
+  quietUntil: string | null
   /** Checks waiting for the collector. */
   queued: number
 }
@@ -192,7 +194,7 @@ export interface PriceOverview {
 
 /** Limits decided by the server; the collector has none of its own. */
 export interface CollectorSettings {
-  /** Pause between two "what should I fetch?" calls. */
+  /** Pause before the next "what should I fetch?" call (during quiet hours: until they end). */
   pollSeconds: number
   /** Minimum gap between two page loads from one domain. */
   domainGapSeconds: number

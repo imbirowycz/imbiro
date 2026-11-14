@@ -206,7 +206,7 @@ const COLLECTOR_SETTINGS = { pollSeconds: 20, domainGapSeconds: 30, pageTimeoutS
 /** The prices module with its service, queue, repository and processor replaced by fakes. */
 function fakePrices() {
   const item = { id: TASK_ID, name: 'Item' }
-  const state = { seen: [] as (string | null)[], completed: [] as unknown[][], processed: [] as unknown[], sourceEnabled: true, jobState: 'active' }
+  const state = { quiet: 0, seen: [] as (string | null)[], completed: [] as unknown[][], processed: [] as unknown[], sourceEnabled: true, jobState: 'active' }
   const service = {
     async overview() {
       return { collector: { lastSeenAt: null, hostname: null, online: false, queued: 0 }, shops: [], items: [item] }
@@ -253,6 +253,7 @@ function fakePrices() {
     collector: createCollectorRouter({
       token: COLLECTOR_TOKEN,
       settings: COLLECTOR_SETTINGS,
+      quietSeconds: () => state.quiet,
       queue: queue as unknown as PriceQueue,
       repo: repo as unknown as PricesRepository,
       processor: processor as unknown as PriceCheckProcessor,
@@ -694,6 +695,15 @@ describe('HTTP API contract', () => {
         jobs: [{ jobId: JOB_ID, url: 'https://shop.test/p/1', waitFor: '.price' }],
       })
       assert.deepEqual(prices.state.seen, ['laptop'])
+    })
+
+    it('hands out nothing in quiet hours and tells the collector when to come back', async () => {
+      prices.state.quiet = 3600
+      const completedBefore = prices.state.completed.length
+      const res = await call('/api/collector/claim', { ...asCollector(), body: {} })
+      prices.state.quiet = 0
+      assert.deepEqual(res.json, { settings: { ...COLLECTOR_SETTINGS, pollSeconds: 3600 }, jobs: [] })
+      assert.equal(prices.state.completed.length, completedBefore)
     })
 
     it('closes the job of a switched-off source instead of handing it out', async () => {

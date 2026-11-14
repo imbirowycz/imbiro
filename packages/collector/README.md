@@ -11,6 +11,9 @@ Zbieracz niczego nie planuje i niczego nie pamięta:
 2. otwiera każdą stronę w prawdziwym Chromie (z oknem i stałym profilem),
 3. odsyła HTML i kod odpowiedzi (`POST /api/collector/results`).
 
+W ciszy nocnej (domyślnie 22:00–5:00, ustawiana na serwerze) API odpowiada „nic do zrobienia,
+wróć o 5:00” — zbieracz śpi do tej godziny i w ogóle nie odpytuje serwera.
+
 Harmonogram, wyciąganie ceny, historia, okazje i powiadomienia są po stronie serwera
 (`packages/backend/src/modules/prices`). Limity zmienia się w `.env` serwera
 (`COLLECTOR_*`), nie tutaj.

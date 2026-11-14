@@ -34,10 +34,13 @@ services:
       CORS_ORIGINS: ""
       # Okazje: sekret domowego zbieracza i limity, które serwer mu podaje.
       COLLECTOR_TOKEN: ${COLLECTOR_TOKEN:-}
-      COLLECTOR_POLL_SECONDS: ${COLLECTOR_POLL_SECONDS:-20}
+      COLLECTOR_POLL_SECONDS: ${COLLECTOR_POLL_SECONDS:-60}
       COLLECTOR_DOMAIN_GAP_SECONDS: ${COLLECTOR_DOMAIN_GAP_SECONDS:-30}
       COLLECTOR_PAGE_TIMEOUT_SECONDS: ${COLLECTOR_PAGE_TIMEOUT_SECONDS:-45}
       COLLECTOR_MAX_JOBS_PER_CLAIM: ${COLLECTOR_MAX_JOBS_PER_CLAIM:-3}
+      # Cisza nocna zbieracza (pełne godziny, Europe/Warsaw); równe wartości = wyłączona.
+      COLLECTOR_QUIET_FROM_HOUR: ${COLLECTOR_QUIET_FROM_HOUR:-22}
+      COLLECTOR_QUIET_TO_HOUR: ${COLLECTOR_QUIET_TO_HOUR:-5}
       # Powiadomienia o okazjach wysyła API (po przyjęciu strony od zbieracza).
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
     depends_on:

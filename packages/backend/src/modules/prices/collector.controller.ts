@@ -16,6 +16,8 @@ export interface CollectorRouterDeps {
   /** Unset = nobody is authorized. */
   token: string | undefined
   settings: CollectorSettings
+  /** Seconds left of the collector's quiet hours; 0 = it may work. */
+  quietSeconds: (now: Date) => number
   queue: PriceQueue
   repo: PricesRepository
   processor: PriceCheckProcessor
@@ -30,7 +32,7 @@ export function requireCollectorToken(token: string | undefined): RequestHandler
   }
 }
 
-export function createCollectorRouter({ token, settings, queue, repo, processor }: CollectorRouterDeps): Router {
+export function createCollectorRouter({ token, settings, quietSeconds, queue, repo, processor }: CollectorRouterDeps): Router {
   const router = Router()
   router.use(requireCollectorToken(token))
 
@@ -39,6 +41,14 @@ export function createCollectorRouter({ token, settings, queue, repo, processor 
     asyncHandler(async (req, res) => {
       const { hostname } = parseInput(collectorClaimSchema, req.body ?? {})
       await repo.touchCollector(hostname ?? null)
+
+      // Quiet hours: hand out nothing and tell the collector to come back when they end —
+      // until then it does not call at all. Waiting checks stay in the queue.
+      const quiet = quietSeconds(new Date())
+      if (quiet > 0) {
+        res.json({ settings: { ...settings, pollSeconds: quiet }, jobs: [] } satisfies CollectorClaimResponse)
+        return
+      }
 
       const response: CollectorClaimResponse = { settings, jobs: [] }
       for (const job of await queue.claim(settings.maxJobsPerClaim)) {

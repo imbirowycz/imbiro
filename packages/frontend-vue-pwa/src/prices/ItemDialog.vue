@@ -2,14 +2,14 @@
 import { onMounted, ref, watch } from 'vue'
 import type { PriceChange, PriceItem, PriceShop, SavePriceSourceDTO } from '@myorg/shared'
 import { pricesApi } from '../api/prices'
-import { dateTime, relativeTime } from '../lib/format'
+import { clockTime, dateTime, relativeTime } from '../lib/format'
 import { hostOf, money, sourceState } from './format'
 import SourceAdder from './SourceAdder.vue'
 
 // The popup of one item: price changes since tracking began and the sources with the result
 // of their last fetch. Sources can be switched off, removed and added right here.
 
-const props = defineProps<{ item: PriceItem; shops: PriceShop[]; now: number; collectorOnline: boolean }>()
+const props = defineProps<{ item: PriceItem; shops: PriceShop[]; now: number; collectorOnline: boolean; quietUntil: string | null }>()
 const emit = defineEmits<{ updated: [item: PriceItem]; close: [] }>()
 
 const dialog = ref<HTMLDialogElement | null>(null)
@@ -39,7 +39,12 @@ async function perform(action: () => Promise<PriceItem | void>, done?: string) {
   }
 }
 
-const waiting = () => (props.collectorOnline ? 'Wynik pojawi się za chwilę.' : 'Zbieracz jest offline — sprawdzenie poczeka w kolejce.')
+const waiting = () =>
+  props.quietUntil
+    ? `Zbieracz jest uśpiony do ${clockTime(props.quietUntil)} — sprawdzenie poczeka w kolejce.`
+    : props.collectorOnline
+      ? 'Wynik pojawi się w ciągu minuty.'
+      : 'Zbieracz jest offline — sprawdzenie poczeka w kolejce.'
 
 function checkNow() {
   void perform(async () => {

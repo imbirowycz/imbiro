@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import type { PriceItem, PriceOverview } from '@myorg/shared'
 import { pricesApi } from '../api/prices'
-import { relativeTime } from '../lib/format'
+import { clockTime, relativeTime } from '../lib/format'
 import ItemCard from './ItemCard.vue'
 import ItemDialog from './ItemDialog.vue'
 import ItemForm from './ItemForm.vue'
@@ -105,9 +105,10 @@ onBeforeUnmount(() => {
         <p class="lede">Śledzone artykuły i ich ceny w sklepach</p>
       </div>
       <div class="top-actions">
-        <span v-if="collector" class="collector" :class="{ online: collector.online }">
+        <span v-if="collector" class="collector" :class="{ online: collector.online && !collector.quietUntil, quiet: !!collector.quietUntil }">
           zbieracz:
-          <template v-if="collector.online">online</template>
+          <template v-if="collector.quietUntil">uśpiony do {{ clockTime(collector.quietUntil) }}</template>
+          <template v-else-if="collector.online">online</template>
           <template v-else-if="collector.lastSeenAt">offline, ostatnio {{ relativeTime(collector.lastSeenAt, now) }}</template>
           <template v-else>jeszcze się nie połączył</template>
           <template v-if="collector.queued"> · w kolejce: {{ collector.queued }}</template>
@@ -161,6 +162,7 @@ onBeforeUnmount(() => {
       :shops="overview.shops"
       :now="now"
       :collector-online="!!collector?.online"
+      :quiet-until="collector?.quietUntil ?? null"
       @updated="replaceItem"
       @close="openId = null"
     />
@@ -213,6 +215,9 @@ onBeforeUnmount(() => {
 }
 .collector.online {
   color: var(--ok);
+}
+.collector.quiet {
+  color: var(--muted);
 }
 .notice {
   display: flex;

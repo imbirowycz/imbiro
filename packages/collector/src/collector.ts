@@ -48,6 +48,8 @@ export class Collector {
       try {
         const settings = await this.cycle(signal)
         pauseMs = settings.pollSeconds * 1000
+        // A pause far longer than ordinary polling means the server's quiet hours.
+        if (pauseMs > 10 * 60_000) this.log(`Cisza: następne zapytanie o ${new Date(this.now() + pauseMs).toLocaleTimeString('pl-PL')}`)
         retryMs = RETRY_MIN_MS
       } catch (err) {
         if (signal.aborted) break
@@ -117,16 +119,27 @@ function hostOf(url: string): string {
   }
 }
 
-/** Resolves after `ms` or as soon as `signal` aborts. */
-export function abortableSleep(ms: number, signal: AbortSignal): Promise<void> {
-  return new Promise((resolve) => {
-    if (signal.aborted) return resolve()
-    const timer = setTimeout(done, ms)
-    function done() {
-      clearTimeout(timer)
-      signal.removeEventListener('abort', done)
-      resolve()
-    }
-    signal.addEventListener('abort', done, { once: true })
-  })
+/** Longest single timer; see abortableSleep. */
+const SLEEP_SLICE_MS = 30_000
+
+/**
+ * Resolves after `ms` of wall-clock time or as soon as `signal` aborts. Sleeps in short slices
+ * and re-checks the clock: a single long timer stops counting while the computer is asleep, so
+ * "sleep until 5:00" set in the evening would end hours late on a laptop that dozed off.
+ */
+export async function abortableSleep(ms: number, signal: AbortSignal): Promise<void> {
+  const deadline = Date.now() + ms
+  while (!signal.aborted) {
+    const left = deadline - Date.now()
+    if (left <= 0) return
+    await new Promise<void>((resolve) => {
+      const timer = setTimeout(done, Math.min(left, SLEEP_SLICE_MS))
+      function done() {
+        clearTimeout(timer)
+        signal.removeEventListener('abort', done)
+        resolve()
+      }
+      signal.addEventListener('abort', done, { once: true })
+    })
+  }
 }

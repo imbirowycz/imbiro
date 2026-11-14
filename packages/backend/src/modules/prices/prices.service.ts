@@ -37,6 +37,8 @@ export class PricesService {
     private readonly repo: PricesRepository,
     private readonly queue: PriceQueue,
     private readonly onlineWithinSeconds: number,
+    /** Seconds left of the collector's quiet hours; 0 = it may work. */
+    private readonly quietSeconds: (now: Date) => number,
     private readonly now: () => Date = () => new Date()
   ) {}
 
@@ -152,10 +154,13 @@ export class PricesService {
 
   private async collectorStatus(): Promise<PriceCollectorStatus> {
     const [state, queued] = await Promise.all([this.repo.collectorState(), this.queue.queuedCount()])
+    const now = this.now()
+    const quiet = this.quietSeconds(now)
     return {
+      quietUntil: quiet > 0 ? new Date(now.getTime() + quiet * 1000).toISOString() : null,
       lastSeenAt: state?.lastSeenAt.toISOString() ?? null,
       hostname: state?.hostname ?? null,
-      online: !!state && this.now().getTime() - state.lastSeenAt.getTime() <= this.onlineWithinSeconds * 1000,
+      online: !!state && now.getTime() - state.lastSeenAt.getTime() <= this.onlineWithinSeconds * 1000,
       queued,
     }
   }

@@ -113,12 +113,16 @@ export const config = {
   prices: {
     // Shared secret of the collector (Authorization: Bearer). Unset = the collector API rejects everyone.
     collectorToken: process.env.COLLECTOR_TOKEN || undefined,
-    pollSeconds: int('COLLECTOR_POLL_SECONDS', 20, 5),
+    pollSeconds: int('COLLECTOR_POLL_SECONDS', 60, 5),
     domainGapSeconds: int('COLLECTOR_DOMAIN_GAP_SECONDS', 30, 0),
     pageTimeoutSeconds: int('COLLECTOR_PAGE_TIMEOUT_SECONDS', 45, 5),
     maxJobsPerClaim: int('COLLECTOR_MAX_JOBS_PER_CLAIM', 3, 1),
     // The collector counts as online when it asked for work within this time.
-    onlineWithinSeconds: int('COLLECTOR_ONLINE_WITHIN_SECONDS', 120, 10),
+    onlineWithinSeconds: int('COLLECTOR_ONLINE_WITHIN_SECONDS', 180, 10),
+    // Quiet hours (Europe/Warsaw, full hours): the collector fetches nothing and does not call the
+    // API at all; checks planned for that time wait in the queue. Equal values switch them off.
+    quietFromHour: int('COLLECTOR_QUIET_FROM_HOUR', 22, 0),
+    quietToHour: int('COLLECTOR_QUIET_TO_HOUR', 5, 0),
   },
 
   // Action integrations are optional: missing configuration = a clear error when the action runs.
