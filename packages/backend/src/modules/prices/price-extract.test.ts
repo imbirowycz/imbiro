@@ -24,6 +24,14 @@ test('auto: OpenGraph wins over microdata when JSON-LD is missing', () => {
   assert.equal(extraction.available, true)
 })
 
+test('auto: OpenGraph availability given as true/false (empik.com)', () => {
+  const page = (value: string) =>
+    `<html><head><meta property="product:price:amount" content="2436.99"><meta property="product:availability" content="${value}"></head><body></body></html>`
+  assert.equal(extractProduct(page('true'), { version: 1, strategy: 'auto' }).extraction.available, true)
+  assert.equal(extractProduct(page('false'), { version: 1, strategy: 'auto' }).extraction.available, false)
+  assert.equal(extractProduct(page('out of stock'), { version: 1, strategy: 'auto' }).extraction.available, false)
+})
+
 test('css: selectors, nbsp prices, availability and match counts', () => {
   const { extraction, selectorMatches } = extractProduct(fixture('css.html'), {
     version: 1,

@@ -17,6 +17,12 @@ export interface PageLoader {
 /** Time for prices rendered by JavaScript when the source names no selector to wait for. */
 const SETTLE_MS = 4_000
 
+/** Cookie domains of the page's site: www.euro.com.pl → euro.com.pl, .euro.com.pl, api.euro.com.pl… */
+export function siteCookiePattern(url: string): RegExp {
+  const site = new URL(url).hostname.replace(/^www\./, '')
+  return new RegExp(`(^|\\.)${site.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`)
+}
+
 export function createBrowserLoader(options: { profileDir: string; channel: string; headless: boolean }): PageLoader {
   let context: BrowserContext | null = null
 
@@ -52,7 +58,15 @@ export function createBrowserLoader(options: { profileDir: string; channel: stri
         } else {
           await page.waitForTimeout(SETTLE_MS)
         }
-        return { httpStatus: response?.status() ?? null, finalUrl: page.url(), html: await page.content() }
+        const httpStatus = response?.status() ?? null
+        const html = await page.content()
+        // Bot protection (Akamai on euro.com.pl) remembers its verdict in the shop's cookies
+        // (_abck): once marked, every later visit with them is refused. Forget them, so the
+        // next attempt comes as a new visitor.
+        if (httpStatus === 403 || httpStatus === 429) {
+          await page.context().clearCookies({ domain: siteCookiePattern(url) }).catch(() => {})
+        }
+        return { httpStatus, finalUrl: page.url(), html }
       } finally {
         await page.close().catch(() => {})
       }

@@ -300,9 +300,16 @@ function fromOpenGraph(doc: Document): Structured | null {
     price,
     oldPrice: parseNumber(metaContent(doc, 'product:original_price:amount')),
     currency: metaContent(doc, 'product:price:currency') ?? metaContent(doc, 'og:price:currency'),
-    available: availability ? /in ?stock|instock|available|dostępny/i.test(availability) && !/out|niedost/i.test(availability) : null,
+    available: availability ? openGraphAvailable(availability) : null,
     from: 'opengraph',
   }
+}
+
+function openGraphAvailable(value: string): boolean {
+  // Some shops (empik.com) write a plain boolean instead of "in stock".
+  if (/^(true|1|yes|tak)$/i.test(value)) return true
+  if (/^(false|0|no|nie)$/i.test(value)) return false
+  return /in ?stock|instock|available|dostępny/i.test(value) && !/out|niedost/i.test(value)
 }
 
 function fromMicrodata(doc: Document): Structured | null {
